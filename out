@@ -1,0 +1,1 @@
+gcc -O3 -Wall -march=native -I -I -c ge.c 
