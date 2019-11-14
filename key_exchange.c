@@ -1,9 +1,11 @@
 #include "ed25519.h"
 #include "fe.h"
 #include "ge.h"
+#include "fe4x.h"
 #include <stdio.h>
 
-void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *public_key, const unsigned char *private_key) {
+void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *public_key, const unsigned char *private_key) 
+{
     unsigned char e[32];
     unsigned int i;
     
@@ -20,9 +22,10 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
     unsigned int b;
 
     /* copy the private key and make sure it's valid */
-    for (i = 0; i < 32; ++i) {
+    for (i = 0; i < 32; ++i) 
+{
         e[i] = private_key[i];
-        //printf("e[%d]=%d\n",i,e[i]);
+       
     }
 
     e[0] &= 248;
@@ -32,7 +35,7 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
     /* unpack the public key and convert edwards to montgomery */
     /* due to CodesInChaos: montgomeryX = (edwardsY + 1)*inverse(1 - edwardsY) mod p */
     fe_frombytes(x1, public_key);
-   
+    //fe_copy(x1,public_key);
     fe_1(tmp1);
     fe_add(tmp0, x1, tmp1);
     fe_sub(tmp1, tmp1, x1);
@@ -78,7 +81,7 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
     fe_cswap(z2, z3, swap);
 
     fe_invert(z2, z2);
-    fe_mul(x2, x2, z2);
+    fe_mul(shared_secret, x2, z2);
     fe_tobytes(shared_secret, x2);
     
     

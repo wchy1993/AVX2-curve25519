@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "precomp4x.h"
+#include <math.h>
 /*
 r = p + q
 */
@@ -480,7 +481,15 @@ void ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
     fe_mul(r->T2d, p->T, d2);
 }
 
-
+static fe4 x1 ={1,1,1,1};
+static fe4 x2 ={2,2,2,2};
+static fe4 x3 ={3,3,3,3};
+static fe4 x4 ={4,4,4,4};
+static fe4 x5 ={5,5,5,5};
+static fe4 x6 ={6,6,6,6};
+static fe4 x7 ={7,7,7,7};
+static fe4 x8 ={8,8,8,8};
+static fe4 set0 = {0,0,0,0};
 /*
 r = p
 */
@@ -497,7 +506,7 @@ void ge_p3_tobytes(unsigned char *s, const ge_p3 *h) {
     fe x;
     fe y;
     fe_invert(recip, h->Z);
-    fe_mul(x, h->X, recip);
+    //fe_mul(x, h->X, recip);
     fe_mul(y, h->Y, recip);
     fe_tobytes(s, y);
     s[31] ^= fe_isnegative(x) << 7;
@@ -606,20 +615,22 @@ static void choose4x(ge_precomp4x *t,int pos, fe4 b)
     int i;
     fe4 neg;
     fe4 equ;
-    fe4 set0;
-    set0 = _mm256_set_epi64x(0,0,0,0);
-    neg= _mm256_cmpgt_epi64(b,set0); 
-    neg = _mm256_srli_epi64(neg,63);
-    equ = _mm256_abs_epi32(b);
-    fe4 x1,x2,x3,x4,x5,x6,x7,x8;
-    x1 =_mm256_set_epi64x(1,1,1,1);
-    x2 =_mm256_set_epi64x(2,2,2,2);
-    x3 =_mm256_set_epi64x(3,3,3,3);
-    x4 =_mm256_set_epi64x(4,4,4,4);
-    x5 =_mm256_set_epi64x(5,5,5,5);
-    x6 =_mm256_set_epi64x(6,6,6,6);
-    x7 =_mm256_set_epi64x(7,7,7,7);
-    x8 =_mm256_set_epi64x(8,8,8,8);
+    //fe4 set0; 
+    fe4 mask;
+    fe4 neg1;  
+    //set0 = _mm256_set_epi64x(0,0,0,0);
+    neg = _mm256_cmpgt_epi64(set0,b);
+    neg = _mm256_srli_epi64(neg,63); 
+    neg1= _mm256_cmpgt_epi64(set0,b);
+    mask = _mm256_cmpgt_epi64(b,set0);
+    mask = _mm256_srli_epi64(mask,63);
+    mask = _mm256_mul_epi32(b,mask);
+    neg1 = _mm256_mul_epi32(b,neg1);
+    
+    equ = _mm256_add_epi32(mask,neg1);
+
+   
+
     fe4 y4x1,y4x2,y4x3,y4x4,y4x5,y4x6,y4x7,y4x8;
     y4x1 = _mm256_cmpeq_epi64(equ,x1);
     y4x1 = _mm256_srli_epi64(y4x1,63);
@@ -777,14 +788,6 @@ void ge_scalarmult_base(ge_p3 *h, const unsigned char *a)
    
     for (i = 0; i < 64; i += 2) {
         choose(&t, i / 2, e[i]);
-	//fe_dump(t.yplusx);
-	//nl();
-        //fe_dump(t.yminusx);
-	//nl();
-        //fe_dump(t.xy2d);
-	//nl();
-	//printf("e[%d]= %d",i,e[i]);
-	//nl();
         ge_madd(&r, h, &t);
         ge_p1p1_to_p3(h, &r);
     }
@@ -819,16 +822,17 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
 
     for (i = 0; i < 63; ++i) {
         e[i] += carry1;
-	//printf("e[%d]=%d\n",i,e[i]);
+	
         carry1 = e[i] + 8;
-	//printf("carry1[%d]=%d\n",i,carry1);
+	
         carry1 >>= 4;
-	//printf("carry1[%d]=%d\n",i,carry1);
+	
         e[i] -= carry1 << 4;
 	//printf("e[%d]=%d",i,e[i]);
     }
     
     e[63] += carry1;
+
     signed char   era1,era2,era3,era4;
     int   pos;
     fe4 tmp;
@@ -844,12 +848,8 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      era4 = e[8*i+7];
      pos = i;
      tmp = _mm256_set_epi64x(era4,era3,era2,era1);
-
-     //printf("%d %d %d %d %d \n ",i,era1,era2,era3,era4);
      choose4x(&t4x,pos,tmp);
-
      ge_madd4x(&r,h,&t4x);
-
      ge_p1p14x_to_p34x(h,&r);
 
 }
@@ -923,11 +923,13 @@ void ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
 
 void ge_tobytes(unsigned char *s, const ge_p2 *h) {
     fe recip;
-    fe x;
+    //fe x;
     fe y;
     fe_invert(recip, h->Z);
-    fe_mul(x, h->X, recip);
+    //fe_mul(x, h->X, recip);
     fe_mul(y, h->Y, recip);
-    fe_tobytes(s, y);
-    s[31] ^= fe_isnegative(x) << 7;
+   
+    fe_tobytes(s, h->Y);
+
+    //s[31] ^= fe_isnegative(x) << 7;
 }

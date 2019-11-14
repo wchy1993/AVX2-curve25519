@@ -13,7 +13,7 @@ for(i=0;i<10;i++)
    fd[i]= _mm256_castsi256_pd(f[i]);
    hd[i]= _mm256_castsi256_pd(h[i]);
 
-  hd[i] = _mm256_blend_pd (fd[i],hd[i],0);
+   hd[i] = _mm256_blend_pd (fd[i],hd[i],0);
  
    h[i]= _mm256_castpd_si256(hd[i]);
   

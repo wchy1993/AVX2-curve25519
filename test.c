@@ -68,11 +68,12 @@ int main() {
     ed25519_create_keypair(public_key, private_key, seed);
     ed25519_create_seed(seed);
     ed25519_create_keypair(other_public_key, other_private_key, seed);
-
+   
     /* create two shared secrets - from both perspectives - and check if they're equal */
     ed25519_key_exchange(shared_secret, other_public_key, private_key);
+
     ed25519_key_exchange(other_shared_secret, public_key, other_private_key);
-/*
+
   for (i = 0; i < 32; ++i) {
         if (shared_secret[i] != other_shared_secret[i]) {
             printf("key exchange was incorrect\n");
@@ -83,7 +84,7 @@ int main() {
     if (i == 32) {
         printf("key exchange was correct\n");
     }
-*/
+
   
     printf("testing seed generation performance: ");
     start = clock();
@@ -118,8 +119,8 @@ restart:
     if (mhz1 != 0) {
         printf("%d cycles on average\n", (int) (delta * mhz0 * 1000 / i));
     }
-
-  /*  printf("testing sign performance: ");
+/* 
+   printf("testing sign performance: ");
     start = clock();
     for (i = 0; i < 10000; ++i) {
         ed25519_sign(signature, message, message_len, public_key, private_key);
