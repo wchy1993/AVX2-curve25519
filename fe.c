@@ -370,58 +370,18 @@ void fe_copy(fe h, const fe f) {
     Ignores top bit of h.
 */
 
-void fe_frombytes(fe h, const unsigned char *s) {
-    crypto_int64 h0 = load_4(s);
-    crypto_int64 h1 = load_3(s + 4) << 6;
-    crypto_int64 h2 = load_3(s + 7) << 5;
-    crypto_int64 h3 = load_3(s + 10) << 3;
-    crypto_int64 h4 = load_3(s + 13) << 2;
-    crypto_int64 h5 = load_4(s + 16);
-    crypto_int64 h6 = load_3(s + 20) << 7;
-    crypto_int64 h7 = load_3(s + 23) << 5;
-    crypto_int64 h8 = load_3(s + 26) << 4;
-    crypto_int64 h9 = (load_3(s + 29) & 8388607) << 2;
-    crypto_int64 carry0;
-    crypto_int64 carry1;
-    crypto_int64 carry2;
-    crypto_int64 carry3;
-    crypto_int64 carry4;
-    crypto_int64 carry5;
-    crypto_int64 carry6;
-    crypto_int64 carry7;
-    crypto_int64 carry8;
-    crypto_int64 carry9;
-
-    carry9 = (h9 + (crypto_int64) (1 << 24)) >> 25;
-    h0 += carry9 * 19;
-    h9 -= carry9 << 25;
-    carry1 = (h1 + (crypto_int64) (1 << 24)) >> 25;
-    h2 += carry1;
-    h1 -= carry1 << 25;
-    carry3 = (h3 + (crypto_int64) (1 << 24)) >> 25;
-    h4 += carry3;
-    h3 -= carry3 << 25;
-    carry5 = (h5 + (crypto_int64) (1 << 24)) >> 25;
-    h6 += carry5;
-    h5 -= carry5 << 25;
-    carry7 = (h7 + (crypto_int64) (1 << 24)) >> 25;
-    h8 += carry7;
-    h7 -= carry7 << 25;
-    carry0 = (h0 + (crypto_int64) (1 << 25)) >> 26;
-    h1 += carry0;
-    h0 -= carry0 << 26;
-    carry2 = (h2 + (crypto_int64) (1 << 25)) >> 26;
-    h3 += carry2;
-    h2 -= carry2 << 26;
-    carry4 = (h4 + (crypto_int64) (1 << 25)) >> 26;
-    h5 += carry4;
-    h4 -= carry4 << 26;
-    carry6 = (h6 + (crypto_int64) (1 << 25)) >> 26;
-    h7 += carry6;
-    h6 -= carry6 << 26;
-    carry8 = (h8 + (crypto_int64) (1 << 25)) >> 26;
-    h9 += carry8;
-    h8 -= carry8 << 26;
+void fe_frombytes(fe h, const unsigned char *s) 
+{
+    crypto_int64 h0 = s[0]|(s[1]<<8)|(s[2]<<16)|((s[3]&3)<<24);
+    crypto_int64 h1 = s[4]|(s[5]<<8)|(s[6]<<16)|((s[7]&1)<<24);
+    crypto_int64 h2 = s[8]|(s[9]<<8)|(s[10]<<16)|((s[11]&3)<<24);
+    crypto_int64 h3 = s[12]|(s[13]<<8)|(s[14]<<16)|((s[15]&1)<<24);
+    crypto_int64 h4 = s[16]|(s[17]<<8)|(s[18]<<16)|((s[19]&3)<<24);
+    crypto_int64 h5 = s[20]|(s[21]<<8)|(s[22]<<16)|((s[23]&1)<<24);
+    crypto_int64 h6 = s[24]|(s[25]<<8)|(s[26]<<16)|((s[27]&3)<<24);
+    crypto_int64 h7 = s[28]|(s[29]<<8)|(s[30]<<16)|((s[31]&1)<<24);
+    crypto_int64 h8 = (s[3]>>2)|((s[7]>>1)<<6)|((s[11]>>2)<<13)|((s[15]>>1)<<19);
+    crypto_int64 h9 = (s[19]>>2)|((s[23]>>1)<<6)|((s[27]>>2)<<13)|((s[31]>>1)<<19);
 
     h[0] = (crypto_int32) h0;
     h[1] = (crypto_int32) h1;
@@ -434,6 +394,7 @@ void fe_frombytes(fe h, const unsigned char *s) {
     h[8] = (crypto_int32) h8;
     h[9] = (crypto_int32) h9;
 }
+
 
 
 
@@ -1655,7 +1616,6 @@ Proof:
   Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
   so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
 */
-
 void fe_tobytes(unsigned char *s, const fe h) {
     crypto_int32 h0 = h[0];
     crypto_int32 h1 = h[1];
@@ -1678,7 +1638,7 @@ void fe_tobytes(unsigned char *s, const fe h) {
     crypto_int32 carry7;
     crypto_int32 carry8;
     crypto_int32 carry9;
-     carry0=h0>>26;  // h0
+  carry0=h0>>26;  // h0
   h1=h1+carry0;
   carry0=carry0<<26;
   h0-=carry0;
@@ -1738,37 +1698,37 @@ void fe_tobytes(unsigned char *s, const fe h) {
    h2=h2+carry1;
    carry1=carry1<<25;
    h1-=carry1;
-  s[0] = (unsigned char) (h0 >> 0);
+    s[0] = (unsigned char) (h0 >> 0);
     s[1] = (unsigned char) (h0 >> 8);
     s[2] = (unsigned char) (h0 >> 16);
-    s[3] = (unsigned char) ((h0 >> 24) | (h1 << 2));
-    s[4] = (unsigned char) (h1 >> 6);
-    s[5] = (unsigned char) (h1 >> 14);
-    s[6] = (unsigned char) ((h1 >> 22) | (h2 << 3));
-    s[7] = (unsigned char) (h2 >> 5);
-    s[8] = (unsigned char) (h2 >> 13);
-    s[9] = (unsigned char) ((h2 >> 21) | (h3 << 5));
-    s[10] = (unsigned char) (h3 >> 3);
-    s[11] = (unsigned char) (h3 >> 11);
-    s[12] = (unsigned char) ((h3 >> 19) | (h4 << 6));
-    s[13] = (unsigned char) (h4 >> 2);
-    s[14] = (unsigned char) (h4 >> 10);
-    s[15] = (unsigned char) (h4 >> 18);
-    s[16] = (unsigned char) (h5 >> 0);
-    s[17] = (unsigned char) (h5 >> 8);
-    s[18] = (unsigned char) (h5 >> 16);
-    s[19] = (unsigned char) ((h5 >> 24) | (h6 << 1));
-    s[20] = (unsigned char) (h6 >> 7);
-    s[21] = (unsigned char) (h6 >> 15);
-    s[22] = (unsigned char) ((h6 >> 23) | (h7 << 3));
-    s[23] = (unsigned char) (h7 >> 5);
-    s[24] = (unsigned char) (h7 >> 13);
-    s[25] = (unsigned char) ((h7 >> 21) | (h8 << 4));
-    s[26] = (unsigned char) (h8 >> 4);
-    s[27] = (unsigned char) (h8 >> 12);
-    s[28] = (unsigned char) ((h8 >> 20) | (h9 << 6));
-    s[29] = (unsigned char) (h9 >> 2);
-    s[30] = (unsigned char) (h9 >> 10);
-    s[31] = (unsigned char) (h9 >> 18);
+    s[3] = (unsigned char) (h0 >> 24)|(h8<<2);
+    s[4] = (unsigned char) (h1 >> 0);
+    s[5] = (unsigned char) (h1 >> 8);
+    s[6] = (unsigned char) (h1 >> 16);
+    s[7] = (unsigned char) (h1 >> 24)|((h8>>6)<<1);
+    s[8] = (unsigned char) (h2 >> 0);
+    s[9] = (unsigned char) (h2 >> 8);
+    s[10] = (unsigned char) (h2 >> 16);
+    s[11] = (unsigned char) (h2 >> 24)|((h8>>13)<<2); 
+    s[12] = (unsigned char) (h3 >> 0);
+    s[13] = (unsigned char) (h3 >> 8);
+    s[14] = (unsigned char) (h3 >> 16);
+    s[15] = (unsigned char) (h3 >> 24)|((h8>>19)<<1);
+    s[16] = (unsigned char) (h4 >> 0);
+    s[17] = (unsigned char) (h4 >> 8);
+    s[18] = (unsigned char) (h4 >> 16);
+    s[19] = (unsigned char) (h4 >> 24)|(h9<<2); 
+    s[20] = (unsigned char) (h5 >> 0);
+    s[21] = (unsigned char) (h5 >> 8);
+    s[22] = (unsigned char) (h5 >> 16);
+    s[23] = (unsigned char) (h5 >> 24)|((h9>>6)<<1);
+    s[24] = (unsigned char) (h6 >> 0);
+    s[25] = (unsigned char) (h6 >> 8);
+    s[26] = (unsigned char) (h6 >> 16);
+    s[27] = (unsigned char) (h6 >> 24)|(h9>>13)<<2; 
+    s[28] = (unsigned char) (h7 >> 0);
+    s[29] = (unsigned char) (h7 >> 8);
+    s[30] = (unsigned char) (h7 >> 16);
+    s[31] = (unsigned char) (h7 >> 24)|(h9>>19)<<1;
 }
 

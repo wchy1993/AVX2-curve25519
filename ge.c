@@ -502,14 +502,19 @@ void ge_p3_to_p2(ge_p2 *r, const ge_p3 *p) {
 
 
 void ge_p3_tobytes(unsigned char *s, const ge_p3 *h) {
-    fe recip;
+    //fe recip;
     fe x;
     fe y;
-    fe_invert(recip, h->Z);
+    fe tmp1;
+    fe tmp0;
+    fe_add(tmp1, h->Z,h->Y);
+    fe_sub(tmp0, h->Z,h->Y);
+    fe_invert(tmp0,tmp0);
+    //fe_invert(recip, h->Z);
     //fe_mul(x, h->X, recip);
-    fe_mul(y, h->Y, recip);
+    fe_mul(y, tmp0, tmp1);
     fe_tobytes(s, y);
-    s[31] ^= fe_isnegative(x) << 7;
+    //s[31] ^= fe_isnegative(x) << 7;
 }
 
 

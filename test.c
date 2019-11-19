@@ -95,7 +95,7 @@ int main() {
 
     printf("%fus per seed\n", ((double) ((end - start) * 1000)) / CLOCKS_PER_SEC / i * 1000);
 
-
+/*
     printf("testing key generation performance: ");
 restart:
     r0 = microseconds();
@@ -119,6 +119,7 @@ restart:
     if (mhz1 != 0) {
         printf("%d cycles on average\n", (int) (delta * mhz0 * 1000 / i));
     }
+*/
 /* 
    printf("testing sign performance: ");
     start = clock();

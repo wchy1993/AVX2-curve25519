@@ -36,12 +36,11 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
     /* due to CodesInChaos: montgomeryX = (edwardsY + 1)*inverse(1 - edwardsY) mod p */
     fe_frombytes(x1, public_key);
     //fe_copy(x1,public_key);
-    fe_1(tmp1);
-    fe_add(tmp0, x1, tmp1);
-    fe_sub(tmp1, tmp1, x1);
-    fe_invert(tmp1, tmp1);
-    fe_mul(x1, tmp0, tmp1);
 
+    printf("x1=");
+    //fe_copy(x1,public_key);
+    fe_dump(x1);
+    nl();
     fe_1(x2);
     fe_0(z2);
     fe_copy(x3, x1);

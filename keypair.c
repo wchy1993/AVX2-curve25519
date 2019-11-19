@@ -7,7 +7,7 @@
 void ed25519_create_keypair(unsigned char *public_key, unsigned char *private_key, const unsigned char *seed) {
     ge_p3 A;
     ge_p34x B;
-    //ge_p3 A1;
+    ge_p3 A1;
     int i ;
   
     sha512(seed, 32, private_key);
@@ -16,15 +16,21 @@ void ed25519_create_keypair(unsigned char *public_key, unsigned char *private_ke
     private_key[31] &= 63;
     private_key[31] |= 64;
 
+printf("private_key orignal");
+nl();
+  for(i=0; i <32;i++)
+{
+   printf("%d,",private_key[i]);
+}
 
 
 
 
-    //ge_scalarmult_base(&A1,private_key);
+    ge_scalarmult_base(&A1,private_key);
     ge_scalarmult_base4x(&A, &B,private_key);
 
 
-   /* fe zina;
+    fe zina;
     fe zinb;
     fe testa;
     fe testb;
@@ -32,9 +38,9 @@ void ed25519_create_keypair(unsigned char *public_key, unsigned char *private_ke
     fe_mul(testa,A.X,zina);
     printf("A=");
     fe_dump(testa);nl();
-    fe_invert(zinb,A1.Z);
-    fe_mul(testb,A1.X,zinb);
-    printf("A1=");
+    //fe_invert(zinb,A1.Z);
+    fe_mul(testb,A.Y,zina);
+    printf("Y=");
     fe_dump(testb);nl();
 
 
@@ -50,10 +56,12 @@ else
 {
 break;
 }
-} */
-
-
-
+} 
+  
+   fe tmp;
+   fe_tobytes(public_key,testb);
+   fe_frombytes(tmp,public_key);
+   fe_dump(tmp);
 
    ge_p3_tobytes(public_key, &A);
 
