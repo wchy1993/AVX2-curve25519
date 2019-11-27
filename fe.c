@@ -1690,7 +1690,7 @@ void fe_tobytes(unsigned char *s, const fe h) {
    carry9=carry9<<25;
    h9-=carry9;
 
-   carry0=h0>>26;  //h0
+   carry0=h0>>26;  //h0f
    h1=h1+carry0;
    carry0=carry0<<26;
    h0-=carry0;

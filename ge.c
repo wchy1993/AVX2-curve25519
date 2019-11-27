@@ -633,9 +633,6 @@ static void choose4x(ge_precomp4x *t,int pos, fe4 b)
     neg1 = _mm256_mul_epi32(b,neg1);
     
     equ = _mm256_add_epi32(mask,neg1);
-
-   
-
     fe4 y4x1,y4x2,y4x3,y4x4,y4x5,y4x6,y4x7,y4x8;
     y4x1 = _mm256_cmpeq_epi64(equ,x1);
     y4x1 = _mm256_srli_epi64(y4x1,63);
@@ -812,6 +809,8 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      //fe h[]
      int i,j;
      
+     clock_t start;
+     clock_t end;
 
       for (i = 0; i < 32; ++i) 
 {
@@ -838,6 +837,8 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
     
     e[63] += carry1;
 
+
+start = clock();
     signed char   era1,era2,era3,era4;
     int   pos;
     fe4 tmp;
@@ -854,10 +855,14 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      pos = i;
      tmp = _mm256_set_epi64x(era4,era3,era2,era1);
      choose4x(&t4x,pos,tmp);
+
      ge_madd4x(&r,h,&t4x);
+
      ge_p1p14x_to_p34x(h,&r);
 
 }
+
+
      ge_p3_dbl4x(&r, h);
      ge_p1p14x_to_p24x(&s, &r);
      ge_p2_dbl4x(&r, &s);
@@ -866,6 +871,7 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      ge_p1p14x_to_p24x(&s, &r);
      ge_p2_dbl4x(&r, &s);
      ge_p1p14x_to_p34x(h, &r);
+
 
     for(i=0;i<8;i++)
 {
@@ -883,6 +889,8 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      ge_p1p14x_to_p34x(h,&r);
 
 }
+
+
      fe x1[4];
      fe y1[4];
      fe z1[4];

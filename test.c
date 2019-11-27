@@ -11,6 +11,20 @@
 #include <assert.h>
 
 
+#ifdef __i386
+__inline__ uint64_t rdtsc() {
+    uint64_t x;
+    __asm__ volatile ("rdtsc" : "=A" (x));
+    return x;
+}
+#elif __amd64
+__inline__ uint64_t rdtsc() {
+    uint64_t a, d;
+    __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+    return (d<<32) | a;
+}
+#endif
+
 static inline uint64_t microseconds()
 {
     struct rusage res[1];
@@ -50,30 +64,30 @@ int main() {
     double delta;
     clock_t start;
     clock_t end;
- 
+    uint64_t t;
 
     const unsigned char message[] = "Hello, world!";
     const int message_len = strlen((char*) message);
 
     /* create a random seed, and a keypair out of that seed */
-    ed25519_create_seed(seed);
+   // ed25519_create_seed(seed);
 
 
-    ed25519_create_keypair(public_key, private_key, seed);
+    //ed25519_create_keypair(public_key, private_key, seed);
   /* create signature on the message with the keypair */
 
    
     /* generate two keypairs for testing key exchange */
     ed25519_create_seed(seed);
-    ed25519_create_keypair(public_key, private_key, seed);
-    ed25519_create_seed(seed);
-    ed25519_create_keypair(other_public_key, other_private_key, seed);
+   // ed25519_create_keypair(public_key, private_key, seed);
+   // ed25519_create_seed(seed);
+   // ed25519_create_keypair(other_public_key, other_private_key, seed);
    
     /* create two shared secrets - from both perspectives - and check if they're equal */
-    ed25519_key_exchange(shared_secret, other_public_key, private_key);
+    //ed25519_key_exchange(shared_secret, other_public_key, private_key);
 
-    ed25519_key_exchange(other_shared_secret, public_key, other_private_key);
-
+   // ed25519_key_exchange(other_shared_secret, public_key, other_private_key);
+/*
   for (i = 0; i < 32; ++i) {
         if (shared_secret[i] != other_shared_secret[i]) {
             printf("key exchange was incorrect\n");
@@ -94,19 +108,25 @@ int main() {
     end = clock();
 
     printf("%fus per seed\n", ((double) ((end - start) * 1000)) / CLOCKS_PER_SEC / i * 1000);
+*/
 
-/*
     printf("testing key generation performance: ");
-restart:
+/*restart:
     r0 = microseconds();
     mhz0 = mhz();
     if (mhz0 > 0) {
         printf("CPU freq : %.2f MHz\n", mhz0);
     }
-    start = clock();
+*/
+    t = rdtsc();
     for (i = 0; i < 10000; ++i) {
         ed25519_create_keypair(public_key, private_key, seed);
     }
+    t = rdtsc() - t;
+
+
+    printf("%ldus per seed\n",  (t) / i);
+/*
     r1 = microseconds();
     mhz1 = mhz();
   if (mhz0 != mhz1) {
@@ -157,15 +177,14 @@ restart:
     end = clock();
 
     printf("%fus per key\n", ((double) ((end - start) * 1000)) / CLOCKS_PER_SEC / i * 1000);
-
+*/
     printf("testing key exchange performance: ");
-    start = clock();
+    t = rdtsc();
     for (i = 0; i < 10000; ++i) {
         ed25519_key_exchange(shared_secret, other_public_key, private_key);
     }
-    end = clock();
+    t = rdtsc()-t;
+printf("%ldus per seed\n",  (t) / i);
 
-    printf("%fus per shared secret\n", ((double) ((end - start) * 1000)) / CLOCKS_PER_SEC / i * 1000);
-*/
     return 0;
 }
