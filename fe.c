@@ -371,28 +371,28 @@ void fe_copy(fe h, const fe f) {
 */
 
 void fe_frombytes(fe h, const unsigned char *s) 
-{
-    crypto_int64 h0 = s[0]|(s[1]<<8)|(s[2]<<16)|((s[3]&3)<<24);
-    crypto_int64 h1 = s[4]|(s[5]<<8)|(s[6]<<16)|((s[7]&1)<<24);
-    crypto_int64 h2 = s[8]|(s[9]<<8)|(s[10]<<16)|((s[11]&3)<<24);
-    crypto_int64 h3 = s[12]|(s[13]<<8)|(s[14]<<16)|((s[15]&1)<<24);
-    crypto_int64 h4 = s[16]|(s[17]<<8)|(s[18]<<16)|((s[19]&3)<<24);
-    crypto_int64 h5 = s[20]|(s[21]<<8)|(s[22]<<16)|((s[23]&1)<<24);
-    crypto_int64 h6 = s[24]|(s[25]<<8)|(s[26]<<16)|((s[27]&3)<<24);
-    crypto_int64 h7 = s[28]|(s[29]<<8)|(s[30]<<16)|((s[31]&1)<<24);
-    crypto_int64 h8 = (s[3]>>2)|((s[7]>>1)<<6)|((s[11]>>2)<<13)|((s[15]>>1)<<19);
-    crypto_int64 h9 = (s[19]>>2)|((s[23]>>1)<<6)|((s[27]>>2)<<13)|((s[31]>>1)<<19);
-
-    h[0] = (crypto_int32) h0;
-    h[1] = (crypto_int32) h1;
-    h[2] = (crypto_int32) h2;
-    h[3] = (crypto_int32) h3;
-    h[4] = (crypto_int32) h4;
-    h[5] = (crypto_int32) h5;
-    h[6] = (crypto_int32) h6;
-    h[7] = (crypto_int32) h7;
-    h[8] = (crypto_int32) h8;
-    h[9] = (crypto_int32) h9;
+{   
+ 
+    uint64_t h0 = load_4(s);
+    uint64_t h1 = load_3(s + 4) << 6;
+    uint64_t h2 = load_3(s + 7) << 5;
+    uint64_t h3 = load_3(s + 10) << 3;
+    uint64_t h4 = load_3(s + 13) << 2;
+    uint64_t h5 = load_4(s + 16);
+    uint64_t h6 = load_3(s + 20) << 7;
+    uint64_t h7 = load_3(s + 23) << 5;
+    uint64_t h8 = load_3(s + 26) << 4;
+    uint64_t h9 = (load_3(s + 29) & 8388607) << 2;
+    h[0] = (crypto_int64) h0;
+    h[1] = (crypto_int64) h1;
+    h[2] = (crypto_int64) h2;
+    h[3] = (crypto_int64) h3;
+    h[4] = (crypto_int64) h4;
+    h[5] = (crypto_int64) h5;
+    h[6] = (crypto_int64) h6;
+    h[7] = (crypto_int64) h7;
+    h[8] = (crypto_int64) h8;
+    h[9] = (crypto_int64) h9;
 }
 
 
@@ -558,37 +558,6 @@ int fe_isnonzero(const fe f) {
 
 
 
-/*
-    h = f * g
-    Can overlap h with f or g.
-
-    Preconditions:
-       |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
-       |g| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
-
-    Postconditions:
-       |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
-    */
-
-    /*
-    Notes on implementation strategy:
-
-    Using schoolbook multiplication.
-    Karatsuba would save a little in some cost models.
-
-    Most multiplications by 2 and 19 are 32-bit precomputations;
-    cheaper than 64-bit postcomputations.
-
-    There is one remaining multiplication by 19 in the carry chain;
-    one *19 precomputation can be merged into this,
-    but the resulting data flow is considerably less clean.
-
-    There are 12 carries below.
-    10 of them are 2-way parallelizable and vectorizable.
-    Can get away with 11 carries, but then data flow is much deeper.
-
-    With tighter constraints on inputs can squeeze carries into int32.
-*/
 
 void fe_mul(fe h, const fe f, const fe g)
 {
@@ -1505,77 +1474,6 @@ void fe_sub(fe h, const fe f, const fe g) {
     crypto_int64 h8 = f8+(m-1)-g8;
     crypto_int64 h9 = f9+(d-1)-g9;
 
-  crypto_int64 carry0;
-  crypto_int64 carry1;
-  crypto_int64 carry2;
-  crypto_int64 carry3;
-  crypto_int64 carry4;
-  crypto_int64 carry5;
-  crypto_int64 carry6;
-  crypto_int64 carry7;
-  crypto_int64 carry8;
-  crypto_int64 carry9;
-
-  carry0=h0>>26;  // h0
-  h1=h1+carry0;
-  carry0=carry0<<26;
-  h0-=carry0;
-
-
-  carry1=h1>>25;  // h1
-  h2=h2+carry1;
-  carry1=carry1<<25;
-  h1-=carry1;
- 
-  carry2=h2>>26;  // h2
-  h3=h3+carry2;
-  carry2=carry2<<26;
-  h2-=carry2;
-
-
-  carry3=h3>>25;  // h3
-  h4=h4+carry3;
-  carry3=carry3<<25;
-  h3-=carry3;
-
-  carry4=h4>>26;  // h4
-  h5=h5+carry4;
-  carry4=carry4<<26;
-  h4-=carry4;
-
-  carry5=h5>>25;  // h5
-  h6=h6+carry5;
-  carry5=carry5<<25;
-  h5-=carry5;
-
-  carry6=h6>>26;  // h6
-  h7=h7+carry6;
-  carry6=carry6<<26;
-  h6-=carry6;
-
-   carry7=h7>>25;  // h7
-   h8=h8+carry7;
-   carry7=carry7<<25;
-   h7-=carry7;
-
-   carry8=h8>>26;  // h8
-   h9=h9+carry8;
-   carry8=carry8<<26;
-   h8-=carry8;
-
-   carry9=h9>>25;  // h9
-   h0=h0+19*carry9;
-   carry9=carry9<<25;
-   h9-=carry9;
-
-   carry0=h0>>26;  //h0
-   h1=h1+carry0;
-   carry0=carry0<<26;
-   h0-=carry0;
-   carry1=h1>>25;    //h1
-   h2=h2+carry1;
-   carry1=carry1<<25;
-   h1-=carry1;
 
   
     h[0] = h0;
@@ -1617,118 +1515,599 @@ Proof:
   so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
 */
 void fe_tobytes(unsigned char *s, const fe h) {
-    crypto_int32 h0 = h[0];
-    crypto_int32 h1 = h[1];
-    crypto_int32 h2 = h[2];
-    crypto_int32 h3 = h[3];
-    crypto_int32 h4 = h[4];
-    crypto_int32 h5 = h[5];
-    crypto_int32 h6 = h[6];
-    crypto_int32 h7 = h[7];
-    crypto_int32 h8 = h[8];
-    crypto_int32 h9 = h[9];
-    //crypto_int32 q;
-    crypto_int32 carry0;
-    crypto_int32 carry1;
-    crypto_int32 carry2;
-    crypto_int32 carry3;
-    crypto_int32 carry4;
-    crypto_int32 carry5;
-    crypto_int32 carry6;
-    crypto_int32 carry7;
-    crypto_int32 carry8;
-    crypto_int32 carry9;
-  carry0=h0>>26;  // h0
-  h1=h1+carry0;
-  carry0=carry0<<26;
-  h0-=carry0;
+    int32_t h0 = h[0];
+    int32_t h1 = h[1];
+    int32_t h2 = h[2];
+    int32_t h3 = h[3];
+    int32_t h4 = h[4];
+    int32_t h5 = h[5];
+    int32_t h6 = h[6];
+    int32_t h7 = h[7];
+    int32_t h8 = h[8];
+    int32_t h9 = h[9];
 
-
-  carry1=h1>>25;  // h1
-  h2=h2+carry1;
-  carry1=carry1<<25;
-  h1-=carry1;
- 
-  carry2=h2>>26;  // h2
-  h3=h3+carry2;
-  carry2=carry2<<26;
-  h2-=carry2;
-
-
-  carry3=h3>>25;  // h3
-  h4=h4+carry3;
-  carry3=carry3<<25;
-  h3-=carry3;
-
-  carry4=h4>>26;  // h4
-  h5=h5+carry4;
-  carry4=carry4<<26;
-  h4-=carry4;
-
-  carry5=h5>>25;  // h5
-  h6=h6+carry5;
-  carry5=carry5<<25;
-  h5-=carry5;
-
-  carry6=h6>>26;  // h6
-  h7=h7+carry6;
-  carry6=carry6<<26;
-  h6-=carry6;
-
-   carry7=h7>>25;  // h7
-   h8=h8+carry7;
-   carry7=carry7<<25;
-   h7-=carry7;
-
-   carry8=h8>>26;  // h8
-   h9=h9+carry8;
-   carry8=carry8<<26;
-   h8-=carry8;
-
-   carry9=h9>>25;  // h9
-   h0=h0+19*carry9;
-   carry9=carry9<<25;
-   h9-=carry9;
-
-   carry0=h0>>26;  //h0f
-   h1=h1+carry0;
-   carry0=carry0<<26;
-   h0-=carry0;
-   carry1=h1>>25;    //h1
-   h2=h2+carry1;
-   carry1=carry1<<25;
-   h1-=carry1;
     s[0] = (unsigned char) (h0 >> 0);
     s[1] = (unsigned char) (h0 >> 8);
     s[2] = (unsigned char) (h0 >> 16);
-    s[3] = (unsigned char) (h0 >> 24)|(h8<<2);
-    s[4] = (unsigned char) (h1 >> 0);
-    s[5] = (unsigned char) (h1 >> 8);
-    s[6] = (unsigned char) (h1 >> 16);
-    s[7] = (unsigned char) (h1 >> 24)|((h8>>6)<<1);
-    s[8] = (unsigned char) (h2 >> 0);
-    s[9] = (unsigned char) (h2 >> 8);
-    s[10] = (unsigned char) (h2 >> 16);
-    s[11] = (unsigned char) (h2 >> 24)|((h8>>13)<<2); 
-    s[12] = (unsigned char) (h3 >> 0);
-    s[13] = (unsigned char) (h3 >> 8);
-    s[14] = (unsigned char) (h3 >> 16);
-    s[15] = (unsigned char) (h3 >> 24)|((h8>>19)<<1);
-    s[16] = (unsigned char) (h4 >> 0);
-    s[17] = (unsigned char) (h4 >> 8);
-    s[18] = (unsigned char) (h4 >> 16);
-    s[19] = (unsigned char) (h4 >> 24)|(h9<<2); 
-    s[20] = (unsigned char) (h5 >> 0);
-    s[21] = (unsigned char) (h5 >> 8);
-    s[22] = (unsigned char) (h5 >> 16);
-    s[23] = (unsigned char) (h5 >> 24)|((h9>>6)<<1);
-    s[24] = (unsigned char) (h6 >> 0);
-    s[25] = (unsigned char) (h6 >> 8);
-    s[26] = (unsigned char) (h6 >> 16);
-    s[27] = (unsigned char) (h6 >> 24)|(h9>>13)<<2; 
-    s[28] = (unsigned char) (h7 >> 0);
-    s[29] = (unsigned char) (h7 >> 8);
-    s[30] = (unsigned char) (h7 >> 16);
-    s[31] = (unsigned char) (h7 >> 24)|(h9>>19)<<1;
+    s[3] = (unsigned char) ((h0 >> 24) | (h1 << 2));
+    s[4] = (unsigned char) (h1 >> 6);
+    s[5] = (unsigned char) (h1 >> 14);
+    s[6] = (unsigned char) ((h1 >> 22) | (h2 << 3));
+    s[7] = (unsigned char) (h2 >> 5);
+    s[8] = (unsigned char) (h2 >> 13);
+    s[9] = (unsigned char) ((h2 >> 21) | (h3 << 5));
+    s[10] = (unsigned char) (h3 >> 3);
+    s[11] = (unsigned char) (h3 >> 11);
+    s[12] = (unsigned char) ((h3 >> 19) | (h4 << 6));
+    s[13] = (unsigned char) (h4 >> 2);
+    s[14] = (unsigned char) (h4 >> 10);
+    s[15] = (unsigned char) (h4 >> 18);
+    s[16] = (unsigned char) (h5 >> 0);
+    s[17] = (unsigned char) (h5 >> 8);
+    s[18] = (unsigned char) (h5 >> 16);
+    s[19] = (unsigned char) ((h5 >> 24) | (h6 << 1));
+    s[20] = (unsigned char) (h6 >> 7);
+    s[21] = (unsigned char) (h6 >> 15);
+    s[22] = (unsigned char) ((h6 >> 23) | (h7 << 3));
+    s[23] = (unsigned char) (h7 >> 5);
+    s[24] = (unsigned char) (h7 >> 13);
+    s[25] = (unsigned char) ((h7 >> 21) | (h8 << 4));
+    s[26] = (unsigned char) (h8 >> 4);
+    s[27] = (unsigned char) (h8 >> 12);
+    s[28] = (unsigned char) ((h8 >> 20) | (h9 << 6));
+    s[29] = (unsigned char) (h9 >> 2);
+    s[30] = (unsigned char) (h9 >> 10);
+    s[31] = (unsigned char) (h9 >> 18);
 }
+
+void fe_to64bit(argElement_1w s, const fe h)
+{
+     unsigned long long h0 = h[0];
+     unsigned long long h1 = h[1];
+     unsigned long long h2 = h[2];
+     unsigned long long h3 = h[3];
+     unsigned long long h4 = h[4];
+     unsigned long long h5 = h[5];
+     unsigned long long h6 = h[6];
+     unsigned long long h7 = h[7];
+     unsigned long long h8 = h[8];
+     unsigned long long h9 = h[9];
+    s[0] = h0|(h1<<26)|((h2&0x1fff)<<51);
+    s[1] = (h2>>13)|(h3<<13)|(h4<<38);
+    s[2] = h5|(h6<<25)|(h7&0x1fff)<<51;
+    s[3] = (h7>>12)|(h8<<12)|h9;
+   
+}
+
+void fe_64tobytes(unsigned char  *s, argElement_1w a)
+{
+    
+    unsigned long long a0 = a[0];
+    unsigned long long a1 = a[1];
+    unsigned long long a2 = a[2];
+    unsigned long long a3 = a[3];
+    s[0] = (unsigned char)(a0>>0);
+    s[1] = (unsigned char)(a0>>8);
+    s[2] = (unsigned char)(a0>>16);
+    s[3] = (unsigned char)(a0>>24);
+    s[4] = (unsigned char)(a0>>32);
+    s[5] = (unsigned char)(a0>>40);
+    s[6] = (unsigned char)(a0>>48);
+    s[7] = (unsigned char)(a0>>56);
+    s[8] = (unsigned char)(a1>>0);
+    s[9] = (unsigned char)(a1>>8);
+    s[10] = (unsigned char)(a1>>16);
+    s[11] = (unsigned char)(a1>>24);
+    s[12] = (unsigned char)(a1>>32);
+    s[13] = (unsigned char)(a1>>40);
+    s[14] = (unsigned char)(a1>>48);
+    s[15] = (unsigned char)(a1>>56);
+    s[16] = (unsigned char)(a2>>0);
+    s[17] = (unsigned char)(a2>>8);
+    s[18] = (unsigned char)(a2>>16);
+    s[19] = (unsigned char)(a2>>24);
+    s[20] = (unsigned char)(a2>>32);
+    s[21] = (unsigned char)(a2>>40);
+    s[22] = (unsigned char)(a2>>48);
+    s[23] = (unsigned char)(a2>>56);
+    s[24] = (unsigned char)(a3>>0);
+    s[25] = (unsigned char)(a3>>8);
+    s[26] = (unsigned char)(a3>>16);
+    s[27] = (unsigned char)(a3>>24);
+    s[28] = (unsigned char)(a3>>32);
+    s[29] = (unsigned char)(a3>>40);
+    s[30] = (unsigned char)(a3>>48);
+    s[31] = (unsigned char)(a3>>56);
+}
+
+
+
+void intmul_mulxadx(argElement_1w c, argElement_1w a, argElement_1w b) {
+  __asm__ __volatile__(
+  "movq   (%1), %%rdx; " /* A[0] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[0]*B[0] */    "xorl %%r10d, %%r10d ;"                           "movq  %%r8,  (%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[0]*B[1] */    "adox  %%r9, %%r10 ;"                             "movq %%r10, 8(%0) ;"
+  "mulx 16(%2), %%r12, %%r13; " /* A[0]*B[2] */    "adox %%r11, %%r12 ;"
+  "mulx 24(%2), %%r14, %%rdx; " /* A[0]*B[3] */    "adox %%r13, %%r14 ;"                                                       "movq $0, %%rax ;"
+  /*******************************************/    "adox %%rdx, %%rax ;"
+
+  "movq  8(%1), %%rdx; " /* A[1] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[1]*B[0] */    "xorl %%r10d, %%r10d ;"  "adcx 8(%0),  %%r8 ;"    "movq  %%r8,  8(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[1]*B[1] */    "adox  %%r9, %%r10 ;"    "adcx %%r12, %%r10 ;"    "movq %%r10, 16(%0) ;"
+  "mulx 16(%2), %%r12, %%r13; " /* A[1]*B[2] */    "adox %%r11, %%r12 ;"    "adcx %%r14, %%r12 ;"                              "movq $0, %%r8  ;"
+  "mulx 24(%2), %%r14, %%rdx; " /* A[1]*B[3] */    "adox %%r13, %%r14 ;"    "adcx %%rax, %%r14 ;"                              "movq $0, %%rax ;"
+  /*******************************************/    "adox %%rdx, %%rax ;"    "adcx  %%r8, %%rax ;"
+
+  "movq 16(%1), %%rdx; " /* A[2] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[2]*B[0] */    "xorl %%r10d, %%r10d ;"  "adcx 16(%0), %%r8 ;"    "movq  %%r8, 16(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[2]*B[1] */    "adox  %%r9, %%r10 ;"    "adcx %%r12, %%r10 ;"    "movq %%r10, 24(%0) ;"
+  "mulx 16(%2), %%r12, %%r13; " /* A[2]*B[2] */    "adox %%r11, %%r12 ;"    "adcx %%r14, %%r12 ;"                              "movq $0, %%r8  ;"
+  "mulx 24(%2), %%r14, %%rdx; " /* A[2]*B[3] */    "adox %%r13, %%r14 ;"    "adcx %%rax, %%r14 ;"                              "movq $0, %%rax ;"
+  /*******************************************/    "adox %%rdx, %%rax ;"    "adcx  %%r8, %%rax ;"
+
+  "movq 24(%1), %%rdx; " /* A[3] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[3]*B[0] */    "xorl %%r10d, %%r10d ;"  "adcx 24(%0), %%r8 ;"    "movq  %%r8, 24(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[3]*B[1] */    "adox  %%r9, %%r10 ;"    "adcx %%r12, %%r10 ;"    "movq %%r10, 32(%0) ;"
+  "mulx 16(%2), %%r12, %%r13; " /* A[3]*B[2] */    "adox %%r11, %%r12 ;"    "adcx %%r14, %%r12 ;"    "movq %%r12, 40(%0) ;"    "movq $0, %%r8  ;"
+  "mulx 24(%2), %%r14, %%rdx; " /* A[3]*B[3] */    "adox %%r13, %%r14 ;"    "adcx %%rax, %%r14 ;"    "movq %%r14, 48(%0) ;"    "movq $0, %%rax ;"
+  /*******************************************/    "adox %%rdx, %%rax ;"    "adcx  %%r8, %%rax ;"    "movq %%rax, 56(%0) ;"
+  :
+  : "r" (c), "r" (a), "r" (b)
+  : "memory", "cc", "%rax", "%rdx", "%r8",
+  "%r9", "%r10", "%r11", "%r12", "%r13", "%r14"
+  );
+}
+
+void intmul_mulx(argElement_1w c, argElement_1w a, argElement_1w b) 
+{
+  __asm__ __volatile__(
+  "movq   (%1), %%rdx; " /* A[0] */
+  "mulx   (%2),  %%r8, %%r12; " /* A[0]*B[0] */                           "movq %%r8,  (%0) ;"
+  "mulx  8(%2), %%r10, %%rax; " /* A[0]*B[1] */    "addq %%r10, %%r12 ;"
+  "mulx 16(%2),  %%r8, %%rbx; " /* A[0]*B[2] */    "adcq  %%r8, %%rax ;"
+  "mulx 24(%2), %%r10, %%rcx; " /* A[0]*B[3] */    "adcq %%r10, %%rbx ;"
+  /*******************************************/    "adcq    $0, %%rcx ;"
+
+  "movq  8(%1), %%rdx; " /* A[1] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[1]*B[0] */    "addq %%r12,  %%r8 ;"  "movq %%r8, 8(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[1]*B[1] */    "adcq %%r10,  %%r9 ;"
+  "mulx 16(%2),  %%r8, %%r13; " /* A[1]*B[2] */    "adcq  %%r8, %%r11 ;"
+  "mulx 24(%2), %%r10, %%r12; " /* A[1]*B[3] */    "adcq %%r10, %%r13 ;"
+  /*******************************************/    "adcq    $0, %%r12 ;"
+
+  "addq  %%r9, %%rax ;"
+  "adcq %%r11, %%rbx ;"
+  "adcq %%r13, %%rcx ;"
+  "adcq    $0, %%r12 ;"
+
+  "movq 16(%1), %%rdx; " /* A[2] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[2]*B[0] */    "addq %%rax,  %%r8 ;"  "movq %%r8, 16(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[2]*B[1] */    "adcq %%r10,  %%r9 ;"
+  "mulx 16(%2),  %%r8, %%r13; " /* A[2]*B[2] */    "adcq  %%r8, %%r11 ;"
+  "mulx 24(%2), %%r10, %%rax; " /* A[2]*B[3] */    "adcq %%r10, %%r13 ;"
+  /*******************************************/    "adcq    $0, %%rax ;"
+
+  "addq  %%r9, %%rbx ;"
+  "adcq %%r11, %%rcx ;"
+  "adcq %%r13, %%r12 ;"
+  "adcq    $0, %%rax ;"
+
+  "movq 24(%1), %%rdx; " /* A[3] */
+  "mulx   (%2),  %%r8,  %%r9; " /* A[3]*B[0] */    "addq %%rbx,  %%r8 ;"  "movq %%r8, 24(%0) ;"
+  "mulx  8(%2), %%r10, %%r11; " /* A[3]*B[1] */    "adcq %%r10,  %%r9 ;"
+  "mulx 16(%2),  %%r8, %%r13; " /* A[3]*B[2] */    "adcq  %%r8, %%r11 ;"
+  "mulx 24(%2), %%r10, %%rbx; " /* A[3]*B[3] */    "adcq %%r10, %%r13 ;"
+  /*******************************************/    "adcq    $0, %%rbx ;"
+
+  "addq  %%r9, %%rcx ;"  "movq %%rcx, 32(%0) ;"
+  "adcq %%r11, %%r12 ;"  "movq %%r12, 40(%0) ;"
+  "adcq %%r13, %%rax ;"  "movq %%rax, 48(%0) ;"
+  "adcq    $0, %%rbx ;"  "movq %%rbx, 56(%0) ;"
+  :
+  : "r" (c), "r" (a), "r" (b)
+  : "memory", "cc", "%rax", "%rbx", "%rcx", "%rdx",
+  "%r8", "%r9", "%r10", "%r11", "%r12", "%r13"
+  );
+}
+
+
+void intmul_mulq(argElement_1w c, argElement_1w a, argElement_1w b) {
+  __asm__ __volatile__(
+    "movq  0(%2), %%r8;"
+	"movq  0(%1), %%rax;" "mulq %%r8;" "movq %%rax, 0(%0);" "movq %%rdx, %%r15;"
+	"movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r13;" "movq %%rdx, %%r10;"
+	"movq 16(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r14;" "movq %%rdx, %%r11;"
+	"movq 24(%1), %%rax;" "mulq %%r8;"
+	"addq %%r13, %%r15;"
+	"adcq %%r14, %%r10;"  "movq %%r10, 16(%0);"
+	"adcq %%rax, %%r11;"  "movq %%r11, 24(%0);"
+	"adcq    $0, %%rdx;"  "movq %%rdx, 32(%0);"
+	"movq  8(%2), %%r8;"
+	"movq  0(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r12;" "movq %%rdx,  %%r9;"
+	"movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r13;" "movq %%rdx, %%r10;"
+	"movq 16(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r14;" "movq %%rdx, %%r11;"
+	"movq 24(%1), %%rax;" "mulq %%r8;"
+	"addq %%r12, %%r15;" "movq %%r15,  8(%0);"
+	"adcq %%r13,  %%r9;"
+	"adcq %%r14, %%r10;"
+	"adcq %%rax, %%r11;"
+	"adcq    $0, %%rdx;"
+	"adcq 16(%0),  %%r9;"  "movq  %%r9,  %%r15;"
+	"adcq 24(%0), %%r10;"  "movq %%r10, 24(%0);"
+	"adcq 32(%0), %%r11;"  "movq %%r11, 32(%0);"
+	"adcq     $0, %%rdx;"  "movq %%rdx, 40(%0);"
+	"movq 16(%2), %%r8;"
+	"movq  0(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r12;" "movq %%rdx,  %%r9;"
+	"movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r13;" "movq %%rdx, %%r10;"
+	"movq 16(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r14;" "movq %%rdx, %%r11;"
+	"movq 24(%1), %%rax;" "mulq %%r8;"
+	"addq %%r12, %%r15;"  "movq %%r15, 16(%0);"
+	"adcq %%r13,  %%r9;"
+	"adcq %%r14, %%r10;"
+	"adcq %%rax, %%r11;"
+	"adcq    $0, %%rdx;"
+	"adcq 24(%0),  %%r9;"  "movq  %%r9,  %%r15;"
+	"adcq 32(%0), %%r10;"  "movq %%r10, 32(%0);"
+	"adcq 40(%0), %%r11;"  "movq %%r11, 40(%0);"
+	"adcq     $0, %%rdx;"  "movq %%rdx, 48(%0);"
+	"movq 24(%2), %%r8;"
+	"movq  0(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r12;" "movq %%rdx,  %%r9;"
+	"movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r13;" "movq %%rdx, %%r10;"
+	"movq 16(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r14;" "movq %%rdx, %%r11;"
+	"movq 24(%1), %%rax;" "mulq %%r8;"
+	"addq %%r12, %%r15;" "movq %%r15, 24(%0);"
+	"adcq %%r13,  %%r9;"
+	"adcq %%r14, %%r10;"
+	"adcq %%rax, %%r11;"
+	"adcq    $0, %%rdx;"
+	"adcq 32(%0),  %%r9;"  "movq  %%r9, 32(%0);"
+	"adcq 40(%0), %%r10;"  "movq %%r10, 40(%0);"
+	"adcq 48(%0), %%r11;"  "movq %%r11, 48(%0);"
+    "adcq     $0, %%rdx;"  "movq %%rdx, 56(%0);"
+  :
+  : "r" (c), "r" (a), "r" (b)
+  : "memory", "cc", "%rax", "%rdx", "%r8", "%r9",
+  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"
+  );
+}
+
+void intmul(argElement_1w c, argElement_1w a, argElement_1w b) {
+#ifdef __BMI2__
+#ifdef __ADX__
+  intmul_mulxadx(c,a,b);
+#else /* No __ADX__ */
+  intmul_mulx(c, a, b);
+#endif
+#else /* No __BMI2__ */
+  intmul_mulq(c,a,b);
+#endif
+}
+
+void intsqr_mulxadx(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  "movq   (%1), %%rdx        ;" /* A[0]      */
+  "mulx  8(%1),  %%r8, %%r14 ;" /* A[1]*A[0] */  "xorl %%r15d, %%r15d;"
+  "mulx 16(%1),  %%r9, %%r10 ;" /* A[2]*A[0] */  "adcx %%r14,  %%r9 ;"
+  "mulx 24(%1), %%rax, %%rcx ;" /* A[3]*A[0] */  "adcx %%rax, %%r10 ;"
+  "movq 24(%1), %%rdx        ;" /* A[3]      */
+  "mulx  8(%1), %%r11, %%r12 ;" /* A[1]*A[3] */  "adcx %%rcx, %%r11 ;"
+  "mulx 16(%1), %%rax, %%r13 ;" /* A[2]*A[3] */  "adcx %%rax, %%r12 ;"
+  "movq  8(%1), %%rdx        ;" /* A[1]      */  "adcx %%r15, %%r13 ;"
+  "mulx 16(%1), %%rax, %%rcx ;" /* A[2]*A[1] */  "movq    $0, %%r14 ;"
+  /*******************************************/  "adcx %%r15, %%r14 ;"
+
+  "xorl %%r15d, %%r15d;"
+  "adox %%rax, %%r10 ;"  "adcx  %%r8,  %%r8 ;"
+  "adox %%rcx, %%r11 ;"  "adcx  %%r9,  %%r9 ;"
+  "adox %%r15, %%r12 ;"  "adcx %%r10, %%r10 ;"
+  "adox %%r15, %%r13 ;"  "adcx %%r11, %%r11 ;"
+  "adox %%r15, %%r14 ;"  "adcx %%r12, %%r12 ;"
+  "adcx %%r13, %%r13 ;"
+  "adcx %%r14, %%r14 ;"
+
+  "movq   (%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[0]^2 */
+  /********************/  "movq %%rax,  0(%0) ;"
+  "addq %%rcx,  %%r8 ;"   "movq  %%r8,  8(%0) ;"
+  "movq  8(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[1]^2 */
+  "adcq %%rax,  %%r9 ;"   "movq  %%r9, 16(%0) ;"
+  "adcq %%rcx, %%r10 ;"   "movq %%r10, 24(%0) ;"
+  "movq 16(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[2]^2 */
+  "adcq %%rax, %%r11 ;"   "movq %%r11, 32(%0) ;"
+  "adcq %%rcx, %%r12 ;"   "movq %%r12, 40(%0) ;"
+  "movq 24(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[3]^2 */
+  "adcq %%rax, %%r13 ;"   "movq %%r13, 48(%0) ;"
+  "adcq %%rcx, %%r14 ;"   "movq %%r14, 56(%0) ;"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rcx", "%rdx",
+  "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"
+  );
+}
+
+
+void intsqr_mulx(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  "movq  8(%1), %%rdx        ;" /* A[1]      */
+  "mulx   (%1),  %%r8,  %%r9 ;" /* A[0]*A[1] */
+  "mulx 16(%1), %%r10, %%r11 ;" /* A[2]*A[1] */
+  "mulx 24(%1), %%rcx, %%r14 ;" /* A[3]*A[1] */
+
+  "movq 16(%1), %%rdx        ;" /* A[2]      */
+  "mulx 24(%1), %%r12, %%r13 ;" /* A[3]*A[2] */
+  "mulx   (%1), %%rax, %%rdx ;" /* A[0]*A[2] */
+
+  "addq %%rax,  %%r9 ;"
+  "adcq %%rdx, %%r10 ;"
+  "adcq %%rcx, %%r11 ;"
+  "adcq %%r14, %%r12 ;"
+  "adcq    $0, %%r13 ;"
+  "movq    $0, %%r14 ;"
+  "adcq    $0, %%r14 ;"
+
+  "movq   (%1), %%rdx        ;" /* A[0]      */
+  "mulx 24(%1), %%rax, %%rcx ;" /* A[0]*A[3] */
+
+  "addq %%rax, %%r10 ;"
+  "adcq %%rcx, %%r11 ;"
+  "adcq    $0, %%r12 ;"
+  "adcq    $0, %%r13 ;"
+  "adcq    $0, %%r14 ;"
+
+  "shldq $1, %%r13, %%r14 ;"
+  "shldq $1, %%r12, %%r13 ;"
+  "shldq $1, %%r11, %%r12 ;"
+  "shldq $1, %%r10, %%r11 ;"
+  "shldq $1,  %%r9, %%r10 ;"
+  "shldq $1,  %%r8,  %%r9 ;"
+  "shlq  $1,  %%r8        ;"
+
+  /********************/  "mulx %%rdx, %%rax, %%rcx ;" /* A[0]^2 */
+  /********************/  "movq %%rax,  0(%0) ;"
+  "addq %%rcx,  %%r8 ;"   "movq  %%r8,  8(%0) ;"
+  "movq  8(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[1]^2 */
+  "adcq %%rax,  %%r9 ;"   "movq  %%r9, 16(%0) ;"
+  "adcq %%rcx, %%r10 ;"   "movq %%r10, 24(%0) ;"
+  "movq 16(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[2]^2 */
+  "adcq %%rax, %%r11 ;"   "movq %%r11, 32(%0) ;"
+  "adcq %%rcx, %%r12 ;"   "movq %%r12, 40(%0) ;"
+  "movq 24(%1), %%rdx ;"  "mulx %%rdx, %%rax, %%rcx ;" /* A[3]^2 */
+  "adcq %%rax, %%r13 ;"   "movq %%r13, 48(%0) ;"
+  "adcq %%rcx, %%r14 ;"   "movq %%r14, 56(%0) ;"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rcx", "%rdx",
+  "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14"
+  );
+}
+
+void intsqr_mulq(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  "movq  0(%1),  %%r8;"
+  "movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax,  %%r9;" "movq %%rdx, %%r10;" /* a[0]*a[1] */
+  "movq 16(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r14;" "movq %%rdx, %%r11;" /* a[0]*a[2] */
+  "movq 24(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%r15;" "movq %%rdx, %%r12;" /* a[0]*a[3] */
+  "movq 24(%1),  %%r8;"
+  "movq  8(%1), %%rax;" "mulq %%r8;" "movq %%rax, %%rcx;" "movq %%rdx, %%r13;" /* a[3]*a[1] */
+  "movq 16(%1), %%rax;" "mulq %%r8;" /* a[3]*a[2] */
+
+  "addq %%r14, %%r10;"
+  "adcq %%r15, %%r11;" "movl $0, %%r15d;"
+  "adcq %%rcx, %%r12;"
+  "adcq %%rax, %%r13;"
+  "adcq    $0, %%rdx;" "movq %%rdx, %%r14;"
+  "movq 8(%1), %%rax;" "mulq 16(%1);"
+
+  "addq %%rax, %%r11;"
+  "adcq %%rdx, %%r12;"
+  "adcq    $0, %%r13;"
+  "adcq    $0, %%r14;"
+  "adcq    $0, %%r15;"
+
+  "shldq $1, %%r14, %%r15;" "movq %%r15, 56(%0);"
+  "shldq $1, %%r13, %%r14;" "movq %%r14, 48(%0);"
+  "shldq $1, %%r12, %%r13;" "movq %%r13, 40(%0);"
+  "shldq $1, %%r11, %%r12;" "movq %%r12, 32(%0);"
+  "shldq $1, %%r10, %%r11;" "movq %%r11, 24(%0);"
+  "shldq $1,  %%r9, %%r10;" "movq %%r10, 16(%0);"
+  "shlq  $1,  %%r9; "       "movq  %%r9,  8(%0);"
+
+  "movq  0(%1),%%rax;" "mulq %%rax;" "movq %%rax, 0(%0);" "movq %%rdx,  %%r9;"
+  "movq  8(%1),%%rax;" "mulq %%rax;" "movq %%rax, %%r10;" "movq %%rdx, %%r11;"
+  "movq 16(%1),%%rax;" "mulq %%rax;" "movq %%rax, %%r12;" "movq %%rdx, %%r13;"
+  "movq 24(%1),%%rax;" "mulq %%rax;" "movq %%rax, %%r14;" "movq %%rdx, %%r15;"
+
+  "addq  8(%0),  %%r9;" "movq  %%r9,  8(%0);"
+  "adcq 16(%0), %%r10;" "movq %%r10, 16(%0);"
+  "adcq 24(%0), %%r11;" "movq %%r11, 24(%0);"
+  "adcq 32(%0), %%r12;" "movq %%r12, 32(%0);"
+  "adcq 40(%0), %%r13;" "movq %%r13, 40(%0);"
+  "adcq 48(%0), %%r14;" "movq %%r14, 48(%0);"
+  "adcq 56(%0), %%r15;" "movq %%r15, 56(%0);"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rcx", "%rdx",
+  "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"
+  );
+}
+
+void intsqr(argElement_1w c, argElement_1w a)
+{
+#ifdef __BMI2__
+#ifdef __ADX__
+  intsqr_mulxadx(c, a);
+#else /* No __ADX__ */
+  intsqr_mulx(c, a);
+#endif
+#else /* No __BMI2__ */
+  intsqr_mulq(c, a);
+#endif
+}
+
+void reduce_mulxadx(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  "movl    $38, %%edx ;" /* 2*c = 38 = 2^256 */
+  "mulx 32(%1),  %%r8, %%r10 ;" /* c*C[4] */  "xorl %%ebx, %%ebx ;"  "adox   (%1),  %%r8 ;"
+  "mulx 40(%1),  %%r9, %%r11 ;" /* c*C[5] */  "adcx %%r10,  %%r9 ;"  "adox  8(%1),  %%r9 ;"
+  "mulx 48(%1), %%r10, %%rax ;" /* c*C[6] */  "adcx %%r11, %%r10 ;"  "adox 16(%1), %%r10 ;"
+  "mulx 56(%1), %%r11, %%rcx ;" /* c*C[7] */  "adcx %%rax, %%r11 ;"  "adox 24(%1), %%r11 ;"
+  /****************************************/  "adcx %%rbx, %%rcx ;"  "adox  %%rbx, %%rcx ;"
+  "imul %%rdx, %%rcx ;" /* c*C[4], cf=0, of=0 */
+  "adcx %%rcx,  %%r8 ;"
+  "adcx %%rbx,  %%r9 ;"  "movq  %%r9,  8(%0) ;"
+  "adcx %%rbx, %%r10 ;"  "movq %%r10, 16(%0) ;"
+  "adcx %%rbx, %%r11 ;"  "movq %%r11, 24(%0) ;"
+  "mov     $0, %%ecx ;"
+  "cmovc %%edx, %%ecx ;"
+  "addq %%rcx,  %%r8 ;"  "movq  %%r8,   (%0) ;"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11"
+  );
+}
+
+void reduce_mulx(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  "movl    $38, %%edx ;" /* 2*c = 38 = 2^256 */
+  "mulx 32(%1),  %%r8, %%r10 ;" /* c*C[4] */
+  "mulx 40(%1),  %%r9, %%r11 ;" /* c*C[5] */  "addq %%r10,  %%r9 ;"
+  "mulx 48(%1), %%r10, %%rax ;" /* c*C[6] */  "adcq %%r11, %%r10 ;"
+  "mulx 56(%1), %%r11, %%rcx ;" /* c*C[7] */  "adcq %%rax, %%r11 ;"
+  /****************************************/  "adcq    $0, %%rcx ;"
+  "addq   (%1),  %%r8 ;"
+  "adcq  8(%1),  %%r9 ;"
+  "adcq 16(%1), %%r10 ;"
+  "adcq 24(%1), %%r11 ;"
+  "adcq     $0, %%rcx ;"
+  "imul %%rdx, %%rcx ;" /* c*C[4], cf=0 */
+  "addq %%rcx,  %%r8 ;"
+  "adcq    $0,  %%r9 ;"  "movq  %%r9,  8(%0) ;"
+  "adcq    $0, %%r10 ;"  "movq %%r10, 16(%0) ;"
+  "adcq    $0, %%r11 ;"  "movq %%r11, 24(%0) ;"
+  "mov     $0, %%ecx ;"
+  "cmovc %%edx, %%ecx ;"
+  "addq %%rcx,  %%r8 ;"  "movq  %%r8,   (%0) ;"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11"
+  );
+}
+
+
+void reduce_mulq(argElement_1w c, argElement_1w a) {
+  __asm__ __volatile__(
+  /* 2*C = 38 = 2^256 */ \
+    "movl $38, %%eax;" "mulq 32(%1);" "movq %%rax,  %%r8;" "movq %%rdx,  %%r9;" /* c*c[4] */
+    "movl $38, %%eax;" "mulq 40(%1);" "movq %%rax, %%r12;" "movq %%rdx, %%r10;" /* c*c[5] */
+    "movl $38, %%eax;" "mulq 48(%1);" "movq %%rax, %%r13;" "movq %%rdx, %%r11;" /* c*c[6] */
+    "movl $38, %%eax;" "mulq 56(%1);" /* c*c[7] */
+    "addq %%r12,  %%r9;"
+    "adcq %%r13, %%r10;"
+    "adcq %%rax, %%r11;"
+    "adcq    $0, %%rdx;"
+    "addq  0(%1),  %%r8;"
+    "adcq  8(%1),  %%r9;"
+    "adcq 16(%1), %%r10;"
+    "adcq 24(%1), %%r11;"
+    "adcq     $0, %%rdx;"
+    "movl $38, %%eax;"
+    "imulq %%rax, %%rdx;" /* c*c[4], cf=0, of=0 */
+    "addq  %%rdx,  %%r8;"
+    "adcq $0,  %%r9;" "movq  %%r9,  8(%0);"
+    "adcq $0, %%r10;" "movq %%r10, 16(%0);"
+    "adcq $0, %%r11;" "movq %%r11, 24(%0);"
+    "movl $0, %%edx;"
+    "cmovc %%rax, %%rdx;"
+    "addq %%rdx, %%r8;" "movq %%r8, 0(%0)"
+  :
+  : "r" (c), "r" (a)
+  : "memory", "cc", "%rax", "%rdx", "%r8", "%r9", "%r10", "%r11", "%r12", "%r13"
+  );
+}
+void reduce(argElement_1w c, argElement_1w a) {
+#ifdef __BMI2__
+#ifdef __ADX__
+  reduce_mulxadx(c,a);
+#else /* No __ADX__ */
+  reduce_mulx(c, a);
+#endif
+#else /* No __BMI2__ */
+  reduce_mulq(c,a);
+#endif
+}
+
+void mul(argElement_1w c, argElement_1w a, argElement_1w b) {
+  EltFp25519_1w_fullradix_buffer buffer_1w;
+  intmul(buffer_1w, a, b);
+  reduce(c, buffer_1w);
+}
+
+void sqr(argElement_1w a) {
+  EltFp25519_1w_fullradix_buffer buffer_1w;
+  intsqr(buffer_1w, a);
+  reduce(a, buffer_1w);
+}
+
+void sqrn(argElement_1w a , unsigned int times)
+{
+  while(times-- >0)
+{
+   sqr(a);
+}
+}
+void copy(argElement_1w c, argElement_1w a)
+ {
+  c[0] = a[0];
+  c[1] = a[1];
+  c[2] = a[2];
+  c[3] = a[3];
+}
+
+void inv(argElement_1w c, argElement_1w a) {
+  EltFp25519_1w_fullradix x0, x1, x2;
+  argElement_1w T[5];
+  int counter ;
+
+  T[0] = x0;
+  T[1] = c; /* x^(-1) */
+  T[2] = x1;
+  T[3] = x2;
+  T[4] = a; /* x */
+
+  copy(T[1], T[4]);
+  sqrn(T[1], 1);
+  copy(T[2], T[1]);
+  sqrn(T[2], 2);
+  mul(T[0], T[4], T[2]);
+  mul(T[1], T[1], T[0]);
+  copy(T[2], T[1]);
+  sqrn(T[2], 1);
+  mul(T[0], T[0], T[2]);
+  copy(T[2], T[0]);
+  sqrn(T[2], 5);
+  mul(T[0], T[0], T[2]);
+  copy(T[2], T[0]);
+  sqrn(T[2], 10);
+  mul(T[2], T[2], T[0]);
+  copy(T[3], T[2]);
+  sqrn(T[3], 20);
+  mul(T[3], T[3], T[2]);
+  sqrn(T[3], 10);
+  mul(T[3], T[3], T[0]);
+  copy(T[0], T[3]);
+  sqrn(T[0], 50);
+  mul(T[0], T[0], T[3]);
+  copy(T[2], T[0]);
+  sqrn(T[2], 100);
+  mul(T[2], T[2], T[0]);
+  sqrn(T[2], 50);
+  mul(T[2], T[2], T[3]);
+  sqrn(T[2], 5);
+  mul(T[1], T[1], T[2]);
+}
+
+
+
+
+
+
 

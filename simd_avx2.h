@@ -1,15 +1,48 @@
-#ifndef FE4X_H
-#define FE4X_H
+/**
+ * Copyright 2017 Armando Faz Hernández
+ * This file is part of faz_ecc_avx2.
+ *
+ * faz_ecc_avx2 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * faz_ecc_avx2 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with faz_ecc_avx2.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Copyright 2017 Armando Faz Hernández
+ * This file is part of faz_ecc_avx2.
+ *
+ * faz_ecc_avx2 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * faz_ecc_avx2 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with faz_ecc_avx2.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef SIMD_AVX2_H
+#define SIMD_AVX2_H
 
 #include <immintrin.h>
 
-typedef __m256i fe4x[10];
-typedef __m256i fe4;
+/** AVX2 Definitions */
+#define HASWELL 0x80
+#define SKYLAKE 0x40
 
-typedef __m256d fe4xd[10];
-typedef __m256d fe4d;
-
-
+#define PROCESSOR SKYLAKE
 
 #define ZEROUPPER         _mm256_zeroupper()
 #define ZERO128           _mm_setzero_si128()
@@ -65,21 +98,16 @@ typedef __m256d fe4d;
 //#define INSR(X,Y,Z)        _mm256_insertf128_si256(X,Y,Z)
 #define CAST256TO128(X)  _mm256_castsi256_si128(X)
 #define CAST128TO256(X)  _mm256_castsi128_si256(X)
+/**
+ * This construction calls broadcast instruction
+ * explicitly specifying a memory location Y, which
+ * could or could not be aligned.
+ */
+#define BROADCASTQ(X, Y)     \
+  __asm__ __volatile(        \
+    "vpbroadcastq (%1), %0;" \
+  :/* out  */ "=x" (X)       \
+  :/* in   */ "r" (Y)        \
+  :/* regs */);
 
-
-
-extern void fe4x_add(fe4x,const fe4x,const fe4x);
-extern void fe4x_sub(fe4x,const fe4x,const fe4x);
-extern void fe4x_mul(fe4x,const fe4x,const fe4x);
-extern void fe4x_sq(fe4x,const fe4x);
-extern void fe4x_cmov(fe4x,const fe4x,fe4 );
-extern void fe4x_addsub(fe4x ,fe4x , fe4x , fe4x );
-extern void fe4x_neg(fe4x,const fe4x);
-extern void fe4x_addsublar(fe4x, fe4x);
-extern void fe4x_copy(fe4x, fe4x);
-extern void fe4x_1(fe4x);
-extern void fe4x_0(fe4x);
-extern void fe4x_cswap(fe4x  , fe4x ,unsigned long long );
-extern void fe4x_negmon(fe4x C,fe4x A);
-#endif
-
+#endif /* SIMD_AVX2_H */

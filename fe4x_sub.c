@@ -3,90 +3,83 @@
 #include "fe.h"
 
 
-crypto_int64 d = 2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2;
-crypto_int64 m = 2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2;   
-void fe4x_sub(fe4x h,const fe4x f,const fe4x g)
+  
+void fe4x_sub(fe4x C,const fe4x A,const fe4x B)
 
 {
    
-   h[0] = _mm256_sub_epi64 (f[0]+2*(m-19), g[0]);
-   h[1] = _mm256_sub_epi64 (f[1]+2*(d-1), g[1]);
-   h[2] = _mm256_sub_epi64 (f[2]+2*(m-1), g[2]);
-   h[3] = _mm256_sub_epi64 (f[3]+2*(d-1), g[3]);
-   h[4] = _mm256_sub_epi64 (f[4]+2*(m-1), g[4]);
-   h[5] = _mm256_sub_epi64 (f[5]+2*(d-1), g[5]);
-   h[6] = _mm256_sub_epi64 (f[6]+2*(m-1), g[6]);
-   h[7] = _mm256_sub_epi64 (f[7]+2*(d-1), g[7]);
-   h[8] = _mm256_sub_epi64 (f[8]+2*(m-1), g[8]);
-   h[9] = _mm256_sub_epi64 (f[9]+2*(d-1), g[9]); 
+   const __m256i _2P[10] = {
+			_mm256_set1_epi64x(0x7ffffda),	_mm256_set1_epi64x(0x3fffffe),
+			_mm256_set1_epi64x(0x3fffffe),	_mm256_set1_epi64x(0x7fffffe),
+			_mm256_set1_epi64x(0x7fffffe),	_mm256_set1_epi64x(0x3fffffe),
+			_mm256_set1_epi64x(0x3fffffe),	_mm256_set1_epi64x(0x7fffffe),
+			_mm256_set1_epi64x(0x7fffffe),	_mm256_set1_epi64x(0x3fffffe)
+	};
+	int i=0;
+	for(i=0;i<10;i++)
+	{
+		C[i] = _mm256_add_epi64(A[i],_mm256_sub_epi64(_2P[i],B[i]));
+	}
 
-
-fe4x carry;
-carry[0] = _mm256_srli_epi64(h[0], 26);
-
-h[1] = _mm256_add_epi64(h[1],carry[0]);
-carry[0]=_mm256_slli_epi64(carry[0], 26);
-
-h[0]=_mm256_sub_epi64(h[0],carry[0]);
-
-carry[1] = _mm256_srli_epi64(h[1], 25);  //carry1
-h[2] = _mm256_add_epi64(h[2],carry[1]);
-carry[1]=_mm256_slli_epi64(carry[1], 25);
-h[1]=_mm256_sub_epi64(h[1],carry[1]);
-
-
-carry[2] = _mm256_srli_epi64(h[2], 26); //carry2
-h[3] = _mm256_add_epi64(h[3],carry[2]);
-carry[2]=_mm256_slli_epi64 (carry[2], 26);
-h[2]=_mm256_sub_epi64(h[2],carry[2]);
-
-carry[3] = _mm256_srli_epi64(h[3], 25); //carry3
-h[4] = _mm256_add_epi64(h[4],carry[3]);
-carry[3]=_mm256_slli_epi64 (carry[3], 25);
-h[3]=_mm256_sub_epi64(h[3],carry[3]);
-
-carry[4] = _mm256_srli_epi64(h[4], 26); //carry4
-h[5] = _mm256_add_epi64(h[5],carry[4]);
-carry[4]=_mm256_slli_epi64 (carry[4], 26);
-h[4]=_mm256_sub_epi64(h[4],carry[4]);
-
-carry[5] = _mm256_srli_epi64(h[5], 25);  //carry5
-h[6] = _mm256_add_epi64(h[6],carry[5]);
-carry[5]=_mm256_slli_epi64 (carry[5], 25);
-h[5]=_mm256_sub_epi64(h[5],carry[5]);
-
-
-carry[6] = _mm256_srli_epi64(h[6], 26); //carry6
-h[7] = _mm256_add_epi64(h[7],carry[6]);
-carry[6]=_mm256_slli_epi64 (carry[6], 26);
-h[6]=_mm256_sub_epi64(h[6],carry[6]);
-
-carry[7] = _mm256_srli_epi64(h[7], 25);  //carry7
-h[8] = _mm256_add_epi64(h[8],carry[7]);
-carry[7]=_mm256_slli_epi64 (carry[7], 25);
-h[7]=_mm256_sub_epi64(h[7],carry[7]);
-
-carry[8] = _mm256_srli_epi64(h[8], 26);  //carry8
-h[9] = _mm256_add_epi64(h[9],carry[8]);
-carry[8]=_mm256_slli_epi64 (carry[8], 26);
-h[8]=_mm256_sub_epi64(h[8],carry[8]);
-
-carry[9] = _mm256_srli_epi64(h[9], 25);  //carry9
-h[0] = _mm256_add_epi64(h[0],19*carry[9]);
-carry[9]= _mm256_slli_epi64(carry[9],25);
-h[9]=_mm256_sub_epi64(h[9],carry[9]);
-
-carry[0] = _mm256_srli_epi64(h[0], 26); //carry0
-h[1] = _mm256_add_epi64(h[1],carry[0]);
-carry[0]=_mm256_slli_epi64 (carry[0], 26);
-h[0]=_mm256_sub_epi64(h[0],carry[0]);
-
-carry[1] = _mm256_srli_epi64(h[1], 25);
-h[2] = _mm256_add_epi64(h[2],carry[1]);
-carry[1]=_mm256_slli_epi64(carry[1], 25);
-h[1]=_mm256_sub_epi64(h[1],carry[1]);
 
 }
 
+void fe4x_addsub(fe4x  C,fe4x  D, fe4x  A, fe4x  B)
+ {
+	const __m256i _2P[10] = {
+			_mm256_set1_epi64x(0x7ffffda),	_mm256_set1_epi64x(0x3fffffe),
+			_mm256_set1_epi64x(0x3fffffe),	_mm256_set1_epi64x(0x7fffffe),
+			_mm256_set1_epi64x(0x7fffffe),	_mm256_set1_epi64x(0x3fffffe),
+			_mm256_set1_epi64x(0x3fffffe),	_mm256_set1_epi64x(0x7fffffe),
+			_mm256_set1_epi64x(0x7fffffe),	_mm256_set1_epi64x(0x3fffffe)
+	};
+	int i=0;
+	for(i=0;i<10;i++)
+	{
+		C[i] = _mm256_add_epi64(A[i],B[i]);
+		D[i] = _mm256_add_epi64(A[i],_mm256_sub_epi64(_2P[i],B[i]));
+	}
+}
+
+void fe4x_addsublar(fe4x  A, fe4x  B) {
+	const __m256i _2_to_35P[10] = {
+			_mm256_set1_epi64x(0x1fffff6800000000),	_mm256_set1_epi64x(0x0ffffff800000000),
+			_mm256_set1_epi64x(0x0ffffff800000000),	_mm256_set1_epi64x(0x1ffffff800000000),
+			_mm256_set1_epi64x(0x1ffffff800000000),	_mm256_set1_epi64x(0x0ffffff800000000),
+			_mm256_set1_epi64x(0x0ffffff800000000),	_mm256_set1_epi64x(0x1ffffff800000000),
+			_mm256_set1_epi64x(0x1ffffff800000000),	_mm256_set1_epi64x(0x0ffffff800000000)
+	};
+	int i=0;
+	for(i=0;i<10;i++)
+	{
+		__m256i add = _mm256_add_epi64(A[i],B[i]);
+		__m256i sub = _mm256_add_epi64(A[i],_mm256_sub_epi64(_2_to_35P[i], B[i]));
+		A[i] = add;
+		B[i] = sub;
+	}
+}
+
+void fe4x_negmon(fe4x C,fe4x A )
+{
+    const __m256i negmon[10] = 
+{
+     _mm256_set_epi64x(0x7ffffda,A[3][0],0x7ffffda,A[1][0]),
+     _mm256_set_epi64x(0x3fffffe,A[3][1],0x3fffffe,A[1][1]),
+     _mm256_set_epi64x(0x7fffffe,A[3][2],0x7fffffe,A[1][2]), 
+     _mm256_set_epi64x(0x3fffffe,A[3][3],0x3fffffe,A[1][3]),
+     _mm256_set_epi64x(0x7fffffe,A[3][4],0x7fffffe,A[1][4]),
+     _mm256_set_epi64x(0x3fffffe,A[3][5],0x3fffffe,A[1][5]),
+     _mm256_set_epi64x(0x7fffffe,A[3][6],0x7fffffe,A[1][6]),
+     _mm256_set_epi64x(0x3fffffe,A[3][7],0x3fffffe,A[1][7]),
+     _mm256_set_epi64x(0x7fffffe,A[3][8],0x7fffffe,A[1][8]),
+     _mm256_set_epi64x(0x3fffffe,A[3][9],0x3fffffe,A[1][9])
+};
+   int i ;
+   for(i=0;i<10;i++)
+	{
+           C[i] = _mm256_sub_epi64(negmon[i],A[i]);
+ 
+       }
+}
 
 

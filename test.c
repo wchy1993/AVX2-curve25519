@@ -6,7 +6,7 @@
 #include "ge.h"
 #include "sc.h"
 #include "fe.h"
-#include <sys/time.h>
+
 #include <sys/resource.h>
 #include <assert.h>
 
@@ -79,9 +79,9 @@ int main() {
    
     /* generate two keypairs for testing key exchange */
     ed25519_create_seed(seed);
-   // ed25519_create_keypair(public_key, private_key, seed);
-   // ed25519_create_seed(seed);
-   // ed25519_create_keypair(other_public_key, other_private_key, seed);
+    ed25519_create_keypair(public_key, private_key, seed);
+    ed25519_create_seed(seed);
+    ed25519_create_keypair(other_public_key, other_private_key, seed);
    
     /* create two shared secrets - from both perspectives - and check if they're equal */
     //ed25519_key_exchange(shared_secret, other_public_key, private_key);
@@ -111,22 +111,21 @@ int main() {
 */
 
     printf("testing key generation performance: ");
-/*restart:
+restart:
     r0 = microseconds();
     mhz0 = mhz();
     if (mhz0 > 0) {
         printf("CPU freq : %.2f MHz\n", mhz0);
     }
-*/
-    t = rdtsc();
+
+    
     for (i = 0; i < 10000; ++i) {
         ed25519_create_keypair(public_key, private_key, seed);
     }
-    t = rdtsc() - t;
+   
 
 
-    printf("%ldus per seed\n",  (t) / i);
-/*
+    
     r1 = microseconds();
     mhz1 = mhz();
   if (mhz0 != mhz1) {
@@ -139,7 +138,7 @@ int main() {
     if (mhz1 != 0) {
         printf("%d cycles on average\n", (int) (delta * mhz0 * 1000 / i));
     }
-*/
+
 /* 
    printf("testing sign performance: ");
     start = clock();
@@ -183,8 +182,9 @@ int main() {
     for (i = 0; i < 10000; ++i) {
         ed25519_key_exchange(shared_secret, other_public_key, private_key);
     }
-    t = rdtsc()-t;
-printf("%ldus per seed\n",  (t) / i);
+     t = rdtsc() - t;
+
+    printf("%dcycles per key\n", ((int) (t /i)));
 
     return 0;
 }

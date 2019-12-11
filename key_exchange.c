@@ -3,7 +3,23 @@
 #include "ge.h"
 #include "fe4x.h"
 #include <stdio.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <assert.h>
 
+#ifdef __i386
+__inline__ uint64_t rdtsc() {
+    uint64_t x;
+    __asm__ volatile ("rdtsc" : "=A" (x));
+    return x;
+}
+#elif __amd64
+__inline__ uint64_t rdtsc() {
+    uint64_t a, d;
+    __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+    return (d<<32) | a;
+}
+#endif
 void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *public_key, const unsigned char *private_key) 
 {
     unsigned char e[32];
@@ -18,11 +34,14 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
     fe tmp1;
     fe x0;
     fe z0;
+    fe set1;
     int j;
-
+    clock_t start;
+    clock_t end;
     int pos;
     unsigned int swap;
     unsigned int b;
+    uint64_t t;
 
     /* copy the private key and make sure it's valid */
     for (i = 0; i < 32; ++i) 
@@ -37,109 +56,116 @@ void ed25519_key_exchange(unsigned char *shared_secret, const unsigned char *pub
 
     /* unpack the public key and convert edwards to montgomery */
     /* due to CodesInChaos: montgomeryX = (edwardsY + 1)*inverse(1 - edwardsY) mod p */
-   fe_frombytes(x1, public_key);
-  
-    fe_0(x0);
-    fe_0(z0);
+    fe_frombytes(x1, public_key);
+    fe_copy(x3, x1);
+    fe4x x2z2x3z3;
+    fe4x x3z3x2z2;
+    fe4x z2x2z3x3;
+    fe4x negz2x2z3x3;
+    fe4x mul4xmonmid;
+    fe4x mul2sq2;
+    fe tmp[4];
+    fe tmp3;
+    fe4x mul4121666;
+    fe4x mul42121666;
+    fe4x mula;
+    fe4x mulb;
+
     fe_1(x2);
     fe_0(z2);
-    fe_copy(x3, x1);
     fe_1(z3);
-    fe4x tmp4x0;
-    fe4x tmp4x1;
-    fe4x tmp4x2;
-    fe4x tmp4x3;
-    fe4x tmp4x4;
-    fe4x tmp4x5;
-    fe4x tmp4x6;
-    fe4x tmp4x7;
-    fe4x tmp4x8;
+    for(i = 0;i<10;i++)
+{
+    x2z2x3z3[i] =_mm256_set_epi64x(x2[i],z2[i],x3[i],z3[i]);
+
+}
+
 
     static fe f121666={121666,121666,121666,121666,121666,121666,121666,121666,121666,121666};
+
     swap = 0;
     for (pos = 254; pos >= 0; --pos) {
         b = e[pos / 8] >> (pos & 7);
         b &= 1;
         swap ^= b;
-        fe_cswap(x2, x3, swap);
-        fe_cswap(z2, z3, swap);
+        for(i=0;i<10;i++)
+	{
+           x3z3x2z2[i] =  _mm256_permute4x64_epi64(x2z2x3z3[i],0x4e);
+        }
+        fe4x_cswap(x2z2x3z3, x3z3x2z2, swap);
+        
         swap = b;
+           for(i = 0;i<10;i++)
+{        
+        z2x2z3x3[i] =_mm256_permute4x64_epi64(x2z2x3z3[i],0xB1);
+}
+        fe4x_negmon(negz2x2z3x3,z2x2z3x3);
+        fe4x_add(x2z2x3z3,x2z2x3z3,negz2x2z3x3);
 
-        /* from montgomery.h */
-        fe_sub(tmp0, x3, z3);
-        fe_sub(tmp1, x2, z2);
-        fe_add(x2, x2, z2);
-        fe_add(z2, x3, z3);
-        
-        //fe_mul(z3, tmp0, x2);
-        //fe_mul(z2, z2, tmp1);
-        //fe_sq(tmp0, tmp1);
-        //fe_sq(tmp1, x2);
+        //fe_sub(tmp0, x3, z3);
+        //fe_sub(tmp1, x2, z2);
+        //fe_add(x2, x2, z2);
+        //fe_add(z2, x3, z3);
+        for(i = 0;i<10;i++)
+{        
+        mul4xmonmid[i] = _mm256_permute4x64_epi64(x2z2x3z3[i],0xA5);
+}
+	fe4x_mul(mul2sq2,mul4xmonmid,x2z2x3z3);
         for (i = 0; i < 10; i++)
-	{
-		tmp4x0[i] = _mm256_set_epi64x(tmp0[i], z2[i], tmp1[i], x2[i]);
-		tmp4x1[i] = _mm256_set_epi64x(x2[i], tmp1[i], tmp1[i], x2[i]); 
-        
-        }
-        fe4x_mul(tmp4x2,tmp4x0,tmp4x1);
-       for (i = 0; i < 10; i++)
-	{
-		z3[i] = _mm256_extract_epi64 (tmp4x2[i], 3);
-                z2[i] = _mm256_extract_epi64 (tmp4x2[i], 2);
-		tmp0[i] = _mm256_extract_epi64 (tmp4x2[i], 1);
-                tmp1[i] = _mm256_extract_epi64 (tmp4x2[i], 0);
+	for (j = 0; j < 4; j++)
+{
+		tmp[j][i] = _mm256_extract_epi64 (mul2sq2[i], j);
+                z3[i]=tmp[3][i];
+                tmp1[i]=tmp[2][i];
+                tmp0[i]=tmp[1][i];
+                z2[i] = tmp[0][i];
+}
 
-        }
-
-                //cY[i] = aY[i]&bb[i];
         fe_add(x3, z3, z2);
         fe_sub(z2, z3, z2);
-        //fe_mul(x2, tmp1, tmp0);
-        fe_sub(tmp1, tmp1, tmp0);
-	//fe_mul(x2, tmp1, tmp0);
-        //fe_sq(z2, z2);
-        //fe_mul121666(z3, tmp1);
-        //fe_sq(x3, x3);
-        for (i = 0; i < 10; i++)
-	{
-		tmp4x3[i] = _mm256_set_epi64x(tmp1[i], z2[i], tmp1[i], x3[i]);
-		tmp4x4[i] = _mm256_set_epi64x(tmp0[i], z2[i], f121666[i], x3[i]); 
-        
-        }
+        fe_sub(tmp3, tmp1, tmp0);
+       for(i=0;i<10;i++)
+{
+	
+       mul4121666[i] = _mm256_set_epi64x(tmp3[i],tmp1[i],z2[i],x3[i]);
+       mul42121666[i] = _mm256_set_epi64x(f121666[i],tmp0[i],z2[i],x3[i]);
+} 
+       fe4x_mul(mula,mul4121666,mul42121666);
+       for (i = 0; i < 10; i++)
+	for (j = 0; j < 4; j++)
 
-        fe4x_mul(tmp4x5,tmp4x3,tmp4x4);
-        for (i = 0; i < 10; i++)
-	{
-		x2[i] = _mm256_extract_epi64 (tmp4x5[i], 3);
-                z2[i] = _mm256_extract_epi64 (tmp4x5[i], 2);
-		z3[i] = _mm256_extract_epi64 (tmp4x5[i], 1);
-                x3[i] = _mm256_extract_epi64 (tmp4x5[i], 0);
-
-        }
-        fe_add(tmp0, tmp0, z3);
-for (i = 0; i < 10; i++)
-	{
-		tmp4x6[i] = _mm256_set_epi64x(x1[i], tmp1[i], x0[i], z0[i]);
-		tmp4x7[i] = _mm256_set_epi64x(z2[i], tmp0[i], x0[i], z0[i]); 
-        
-        }
-        fe4x_mul(tmp4x8,tmp4x6,tmp4x7);
-for (i = 0; i < 10; i++)
-	{
-		z3[i] = _mm256_extract_epi64 (tmp4x8[i], 3);
-                z2[i] = _mm256_extract_epi64 (tmp4x8[i], 2);
-		//z3[i] = _mm256_extract_epi64 (tmp4x5[i], 1);
-                //x3[i] = _mm256_extract_epi64 (tmp4x5[i], 0);
-
-        }
-        //fe_mul(z3, x1, z2);
-        //fe_mul(z2, tmp1, tmp0);
+{
+              tmp[j][i] = _mm256_extract_epi64 (mula[i], j);
+              z3[i] = tmp[3][i];
+              x2[i] = tmp[2][i];
+              z2[i] = tmp[1][i];
+              x3[i] = tmp[0][i];
+}
+         fe_add(tmp0, tmp0, z3);
+           for(i=0;i<10;i++)
+{          
+            mula[i] = _mm256_set_epi64x(x2[i],tmp3[i],x3[i],x1[i]);
+            mulb[i] = _mm256_set_epi64x(set1[i],tmp0[i],set1[i],z2[i]);
+}
+            fe4x_mul(x2z2x3z3,mula,mulb);
     }
 
-    fe_cswap(x2, x3, swap);
-    fe_cswap(z2, z3, swap);
+    fe4x_cswap(x2z2x3z3, x3z3x2z2, swap);
+    for (i = 0; i < 10; i++)
+	for (j = 0; j < 4; j++)
 
-    fe_invert(z2, z2);
-    fe_mul(x2, x2, z2);
-    fe_tobytes(shared_secret, x2);
+{
+           tmp[j][i] = _mm256_extract_epi64 (x2z2x3z3[i], j);
+           x2[i] = tmp[3][i];
+           z2[i] = tmp[2][i];   
+}
+    argElement_1w m;
+    argElement_1w q;
+    argElement_1w n;
+    argElement_1w p;
+    fe_to64bit(m,z2);
+    fe_to64bit(n,x2);
+    inv(q, m);
+    mul(p, q, n);
+    fe_64tobytes(shared_secret, p);
 }

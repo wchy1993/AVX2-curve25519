@@ -1,13 +1,3 @@
-/* LibTomCrypt, modular cryptographic library -- Tom St Denis
- *
- * LibTomCrypt is a library that provides various cryptographic
- * algorithms in a highly modular and flexible manner.
- *
- * The library is free for all purposes without any express
- * guarantee it works.
- *
- * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
- */
 
 #include "fixedint.h"
 #include "sha512.h"
@@ -139,11 +129,7 @@ static int sha512_compress(sha512_context *md, unsigned char *buf)
 }
 
 
-/**
-   Initialize the hash state
-   @param md   The hash state you wish to initialize
-   @return 0 if successful
-*/
+
 int sha512_init(sha512_context * md) {
     if (md == NULL) return 1;
 
@@ -161,13 +147,7 @@ int sha512_init(sha512_context * md) {
     return 0;
 }
 
-/**
-   Process a block of memory though the hash
-   @param md     The hash state
-   @param in     The data to hash
-   @param inlen  The length of the data (octets)
-   @return 0 if successful
-*/
+
 int sha512_update (sha512_context * md, const unsigned char *in, size_t inlen)               
 {                                                                                           
     size_t n;
@@ -209,12 +189,7 @@ int sha512_update (sha512_context * md, const unsigned char *in, size_t inlen)
     return 0;                                                                        
 }
 
-/**
-   Terminate the hash to get the digest
-   @param md  The hash state
-   @param out [out] The destination of the hash (64 bytes)
-   @return 0 if successful
-*/
+
    int sha512_final(sha512_context * md, unsigned char *out)
    {
     int i;

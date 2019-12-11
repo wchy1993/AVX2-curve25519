@@ -4,10 +4,24 @@
 #include <time.h>
 #include "precomp4x.h"
 #include <math.h>
+
 /*
 r = p + q
 */
 
+#ifdef __i386
+__inline__ uint64_t rdtsc() {
+    uint64_t x;
+    __asm__ volatile ("rdtsc" : "=A" (x));
+    return x;
+}
+#elif __amd64
+__inline__ uint64_t rdtsc() {
+    uint64_t a, d;
+    __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+    return (d<<32) | a;
+}
+#endif
 
 void pt()
 {
@@ -505,15 +519,21 @@ void ge_p3_tobytes(unsigned char *s, const ge_p3 *h) {
     //fe recip;
     fe x;
     fe y;
+    argElement_1w t;
+    argElement_1w t1;
+    argElement_1w m;
+    argElement_1w n;
     fe tmp1;
     fe tmp0;
     fe_add(tmp1, h->Z,h->Y);
     fe_sub(tmp0, h->Z,h->Y);
-    fe_invert(tmp0,tmp0);
+    fe_to64bit(t,tmp0);
+    fe_to64bit(m,tmp1);
+    inv(t1,t);
     //fe_invert(recip, h->Z);
     //fe_mul(x, h->X, recip);
-    fe_mul(y, tmp0, tmp1);
-    fe_tobytes(s, y);
+    mul(n, t1, m);
+    fe_64tobytes(s, n);
     //s[31] ^= fe_isnegative(x) << 7;
 }
 
@@ -631,7 +651,6 @@ static void choose4x(ge_precomp4x *t,int pos, fe4 b)
     mask = _mm256_srli_epi64(mask,63);
     mask = _mm256_mul_epi32(b,mask);
     neg1 = _mm256_mul_epi32(b,neg1);
-    
     equ = _mm256_add_epi32(mask,neg1);
     fe4 y4x1,y4x2,y4x3,y4x4,y4x5,y4x6,y4x7,y4x8;
     y4x1 = _mm256_cmpeq_epi64(equ,x1);
@@ -673,7 +692,6 @@ static void choose4x(ge_precomp4x *t,int pos, fe4 b)
     fe4x_copy(minust.yminusx4x, t->yplusx4x);
     fe4x_neg(minust.xy2d4x, t->xy2d4x);
     cmov4x(t, &minust, neg);
-    
 }
 /*
 h = a * B
@@ -689,6 +707,7 @@ Preconditions:
 
 void ge_add4X_to_add(ge_p3 *m,fe X1,fe Y1, fe Z1, fe T1,fe X2,fe Y2,fe Z2,fe T2)
 {  
+   int i ,j;
    fe asub1;
    fe asub2;
    fe badd1;
@@ -706,28 +725,61 @@ void ge_add4X_to_add(ge_p3 *m,fe X1,fe Y1, fe Z1, fe T1,fe X2,fe Y2,fe Z2,fe T2)
    fe Y3;
    fe Z3;
    fe T3;
+   fe4x mul1;
+   fe4x mul2;
+   fe4x mul3;
+   fe4x mul4;
+   fe4x mul5;
+   fe4x mul6;
    fe_sub(asub1,Y1,X1);
    fe_sub(asub2,Y2,X2);
    fe_mul(A,asub1,asub2);
    fe_add(badd1,Y1,X1);
    fe_add(badd2,Y2,X2);
-   fe_mul(B,badd1,badd2);
-   fe_mul(C,T1,d2);
-   fe_mul(C1,C,T2);
-   fe_mul(D,Z1,Z2);
+   //fe_mul(B,badd1,badd2);
+   //fe_mul(C,T1,d2);
+   //fe_mul(C1,C,T2);
+   //fe_mul(D,Z1,Z2);
+        for (i = 0; i < 10; i++)
+	{
+		mul1[i] = _mm256_set_epi64x(badd1[i], T1[i], C[i], Z1[i]);
+		mul2[i] = _mm256_set_epi64x(badd2[i], d2[i], T2[i], Z2[i]); 
+        
+        }
+        fe4x_mul(mul3,mul1,mul2);
+   for (i = 0; i < 10; i++)
+	{
+		B[i] = _mm256_extract_epi64 (mul3[i], 3);
+                C[i] = _mm256_extract_epi64 (mul3[i], 2);
+		C1[i] = _mm256_extract_epi64 (mul3[i], 1);
+                D[i] = _mm256_extract_epi64 (mul3[i], 0);
+
+        }
    fe_add(D,D,D);
    fe_sub(E,B,A);
    fe_sub(F,D,C1);
    fe_add(G,D,C1);
    fe_add(H,B,A);
-   fe_mul(X3,E,F);  
-   fe_mul(Y3,G,H);
-   fe_mul(T3,E,H);
-   fe_mul(Z3,F,G);
-   fe_copy(m->X,X3);
-   fe_copy(m->Y,Y3);
-   fe_copy(m->Z,Z3);
-   fe_copy(m->T,T3);
+for (i = 0; i < 10; i++)
+	{
+		mul4[i] = _mm256_set_epi64x(E[i], G[i], E[i], F[i]);
+		mul5[i] = _mm256_set_epi64x(F[i], H[i], H[i], G[i]); 
+        
+        }
+fe4x_mul(mul6,mul4,mul5);
+ for (i = 0; i < 10; i++)
+	{
+		m->X[i] = _mm256_extract_epi64 (mul3[i], 3);
+                m->Y[i] = _mm256_extract_epi64 (mul3[i], 2);
+		m->Z[i] = _mm256_extract_epi64 (mul3[i], 1);
+                m->T[i] = _mm256_extract_epi64 (mul3[i], 0);
+
+        }
+   //fe_mul(X3,E,F);  
+   //fe_mul(Y3,G,H);
+   //fe_mul(T3,E,H);
+   //fe_mul(Z3,F,G);
+  
 }
 
 
@@ -808,10 +860,10 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
      //fe htest[4];
      //fe h[]
      int i,j;
-     
+     int k;
      clock_t start;
      clock_t end;
-
+      uint64_t n;
       for (i = 0; i < 32; ++i) 
 {
         e[2 * i + 0] = (a[i] >> 0) & 15;
@@ -838,7 +890,6 @@ void ge_scalarmult_base4x(ge_p3 *m, ge_p34x *h, const unsigned char *a)
     e[63] += carry1;
 
 
-start = clock();
     signed char   era1,era2,era3,era4;
     int   pos;
     fe4 tmp;
@@ -859,8 +910,8 @@ start = clock();
      ge_madd4x(&r,h,&t4x);
 
      ge_p1p14x_to_p34x(h,&r);
-
 }
+   
 
 
      ge_p3_dbl4x(&r, h);
